@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>안성여고 지속가능한 공동체 프로젝트</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
+        body { font-family: 'Pretendard', sans-serif; background-color: #F8FCF8; color: #1f2937; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        .animate-fade { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        const Icon = ({ name, className = "w-5 h-5" }) => {
+            useEffect(() => { lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} className={className}></i>;
+        };
+
+        const App = () => {
+            const [step, setStep] = useState('landing');
+            const [currentSession, setCurrentSession] = useState(1);
+            const [groupType, setGroupType] = useState(null);
+            const [showExamples, setShowExamples] = useState(false);
+            const [currentTime, setCurrentTime] = useState(new Date());
+
+            const sdgGoals = [
+                "1. 빈곤층 감소와 사회안전망 강화", "2. 먹거리 안보와 지속가능한 농업", "3. 건강하고 행복한 삶 보장",
+                "4. 모두를 위한 양질의 교육", "5. 성평등 보장", "6. 건강하고 깨끗한 물 관리",
+                "7. 에너지의 친환경적 생산과 소비", "8. 좋은 일자리 확대와 경제성장", "9. 산업 혁신과 인프라 구축",
+                "10. 모든 종류의 불평등 해소", "11. 지속가능한 도시와 공동체", "12. 지속가능한 생산과 소비",
+                "13. 기후변화 대응", "14. 해양생태계 보전", "15. 육상생태계 보전",
+                "16. 평화, 정의, 강력한 제도", "17. 지구촌 협력 확대"
+            ];
+
+            const exampleThemes = [
+                { field: '교육', title: '우리 동네 초록 수업 기획단', desc: '어린이 대상 지속 가능 수업 제작 및 실행' },
+                { field: '마케팅', title: '제로 웨이스트 브랜드 로컬 광고 기획', desc: '지역 친환경 매장 콘텐츠 제작' },
+                { field: '식품영양', title: '로컬 푸드 식단 챌린지', desc: '지역 식자재 식단 구성 및 요리 활동' },
+                { field: '회계', title: '친환경 소비 가계부 프로젝트', desc: '친환경 제품 가격 비교 및 소비계획' },
+                { field: '행정', title: '우리 동네 지속 가능 정책 브리핑', desc: '지역 정책 조사 및 카드뉴스 제작' },
+                { field: '사서', title: '지구를 위한 책장 큐레이션', desc: '환경 관련 도서 큐레이션 운영' },
+                { field: '미디어', title: '로컬 지속 가능 뉴스룸', desc: '지속 가능 뉴스 콘텐츠 제작' },
+                { field: '뷰티', title: '업사이클 뷰티 아이템 워크숍', desc: '화장품 공병 활용 뷰티 아이템 제작' },
+                { field: '법학', title: '생활 속 기후권 찾기', desc: '기후권 사례 수집 및 법률 소개 및 제작' }
+            ];
+
+            const deadLines = {
+                1: new Date('2026-05-12T09:30:00'),
+                2: new Date('2026-05-12T10:30:00'),
+                3: new Date('2026-05-12T13:00:00'),
+                5: new Date('2026-05-12T16:00:00')
+            };
+
+            const [basicInfo, setBasicInfo] = useState({
+                classNum: '1', groupNum: '1',
+                members: [{ id: 1, name: '', studentId: '' }]
+            });
+
+            const [formData, setFormData] = useState({
+                session1: { field: '', sdg: '', title: '', summary: '', regionalLink: '', subjects: ['', ''], reason: '', problem: '', writerId: '', writerName: '' },
+                session2: { cases: '', policies: '', links: ['', ''], writerId: '', writerName: '' },
+                session3_4: { solution: '', links: ['', ''], writerId: '', writerName: '' },
+                session5_6: { plan: '', tool: '', description: '', roles: [{name: '', role: ''}], writerId: '', writerName: '' }
+            });
+
+            useEffect(() => {
+                const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            const isExpired = (n) => currentTime > (deadLines[n] || new Date('2099-01-01'));
+
+            const handleInputChange = useCallback((sKey, field, value, idx = null) => {
+                setFormData(prev => {
+                    const sessionData = { ...prev[sKey] };
+                    if (idx !== null) {
+                        const newList = [...sessionData[field]];
+                        newList[idx] = value;
+                        sessionData[field] = newList;
+                    } else {
+                        sessionData[field] = value;
+                    }
+                    return { ...prev, [sKey]: sessionData };
+                });
+            }, []);
+
+            const downloadHTML = () => {
+                const info = basicInfo;
+                const s1 = formData.session1;
+                const s2 = formData.session2;
+                const s3 = formData.session3_4;
+                const s5 = formData.session5_6;
+
+                const content = `
+                <!DOCTYPE html>
+                <html lang="ko">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>안성여고 프로젝트 결과보고서</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; }
+                        h1 { color: #059669; border-bottom: 3px solid #059669; padding-bottom: 10px; text-align: center; }
+                        h2 { background: #f0fdf4; padding: 10px; border-left: 5px solid #059669; margin-top: 30px; font-size: 1.2rem; }
+                        .info-box { background: #f9fafb; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e5e7eb; }
+                        .writer { font-size: 0.9em; color: #059669; font-weight: bold; text-align: right; margin-top: 10px; background: #f0fdf4; padding: 5px 10px; border-radius: 5px; display: inline-block; float: right; }
+                        .clear { clear: both; }
+                        p { margin: 8px 0; }
+                        b { color: #111; }
+                    </style>
+                </head>
+                <body>
+                    <h1>안성여고 지속가능한 공동체 프로젝트 결과물</h1>
+                    <div class="info-box">
+                        <p><b>학급:</b> 3학년 ${info.classNum}반 ${groupType === 'multi' ? `${info.groupNum}모둠` : '개별활동'}</p>
+                        <p><b>참여자:</b> ${info.members.map(m => `${m.studentId} ${m.name}`).join(', ')}</p>
+                    </div>
+
+                    <h2>1차시: 주제별 문제의식 공유</h2>
+                    <p><b>진로분야:</b> ${s1.field} | <b>SDG 목표:</b> ${s1.sdg}</p>
+                    <p><b>활동제목:</b> ${s1.title}</p>
+                    <p><b>활동개요:</b> ${s1.summary}</p>
+                    <p><b>지역연계 요소:</b> ${s1.regionalLink}</p>
+                    <p><b>융합 교과:</b> ${s1.subjects.filter(s => s).join(', ')}</p>
+                    <p><b>교과 융합 이유:</b> ${s1.reason}</p>
+                    <p><b>안성의 사회 문제:</b> ${s1.problem}</p>
+                    <div class="writer">기록자: ${s1.writerId} ${s1.writerName}</div>
+                    <div class="clear"></div>
+
+                    <h2>2차시: 사례 및 정책 분석</h2>
+                    <p><b>안성의 문제 사례/성공분야:</b> ${s2.cases}</p>
+                    <p><b>정책 조사 및 한계점 분석:</b> ${s2.policies}</p>
+                    <p><b>관련 자료 링크:</b> ${s2.links.filter(l => l).join(', ')}</p>
+                    <div class="writer">기록자: ${s2.writerId} ${s2.writerName}</div>
+                    <div class="clear"></div>
+
+                    <h2>3-4차시: 우리 모둠 해결방안</h2>
+                    <p><b>구체적 해결방안:</b> ${s3.solution}</p>
+                    <p><b>참고 자료 링크:</b> ${s3.links.filter(l => l).join(', ')}</p>
+                    <div class="writer">기록자: ${s3.writerId} ${s3.writerName}</div>
+                    <div class="clear"></div>
+
+                    <h2>5-6차시: 결과물 제작 계획</h2>
+                    <p><b>결과물 종류:</b> ${s5.plan}</p>
+                    <p><b>제작 도구:</b> ${s5.tool}</p>
+                    <p><b>상세 설명:</b> ${s5.description}</p>
+                    <p><b>역할 분담:</b> ${s5.roles.map(r => `${r.name}(${r.role})`).join(', ')}</p>
+                    <div class="writer">기록자: ${s5.writerId} ${s5.writerName}</div>
+                    <div class="clear"></div>
+                </body>
+                </html>`;
+
+                const blob = new Blob([content], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const fileName = groupType === 'multi' 
+                    ? `3학년_${info.classNum}반_${info.groupNum}모둠_활동보고서.html` 
+                    : `3학년_${info.classNum}반_${info.members[0].studentId}_${info.members[0].name}_활동보고서.html`;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            return (
+                <div className="min-h-screen pb-20">
+                    <header className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div onClick={() => step !== 'landing' && setStep('landing')} className="cursor-pointer group text-center md:text-left">
+                            <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
+                                <div className="bg-green-600 p-2 rounded-2xl shadow-lg group-hover:rotate-6 transition-transform">
+                                    <Icon name="layout" className="text-white w-6 h-6" />
+                                </div>
+                                <h1 className="text-3xl font-black text-green-900 tracking-tight">안성여고 프로젝트</h1>
+                            </div>
+                            <p className="text-green-700 font-bold ml-1 tracking-tight">지속가능한 안성시 공동체 만들기 ✨</p>
+                        </div>
+                        <div className="bg-white px-6 py-3 rounded-full shadow-sm border border-green-50 text-center min-w-[140px]">
+                            <p className="text-[10px] font-bold text-gray-400 leading-none uppercase">Current Time</p>
+                            <p className="text-xl font-black text-green-600 leading-tight">{currentTime.toLocaleTimeString([], {hour12: false})}</p>
+                        </div>
+                    </header>
+
+                    <main className="max-w-6xl mx-auto px-6">
+                        {step === 'landing' && (
+                            <div className="bg-white rounded-[3.5rem] shadow-xl p-12 text-center animate-fade border-4 border-white">
+                                <div className="w-20 h-20 bg-green-100 rounded-[1.8rem] flex items-center justify-center mx-auto mb-8">
+                                    <Icon name="users" className="w-10 h-10 text-green-600" />
+                                </div>
+                                <h2 className="text-3xl font-black text-gray-900 mb-10">참여 형태를 선택해 주세요</h2>
+                                <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+                                    <button onClick={() => {setGroupType('single'); setStep('config'); setBasicInfo(p => ({...p, members: [{id:1, name:'', studentId:''}]}));}} className="group p-10 bg-white border-4 border-gray-50 rounded-[3rem] hover:border-green-400 hover:bg-green-50/50 transition-all shadow-sm">
+                                        <Icon name="user" className="w-12 h-12 mx-auto text-green-400 group-hover:scale-110 transition-transform" />
+                                        <h3 className="text-2xl font-black mt-6 text-green-900">1인 활동</h3>
+                                    </button>
+                                    <button onClick={() => {setGroupType('multi'); setStep('config');}} className="group p-10 bg-white border-4 border-gray-50 rounded-[3rem] hover:border-green-400 hover:bg-green-50/50 transition-all shadow-sm">
+                                        <Icon name="users" className="w-12 h-12 mx-auto text-green-400 group-hover:scale-110 transition-transform" />
+                                        <h3 className="text-2xl font-black mt-6 text-green-900">모둠 활동</h3>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 'config' && (
+                            <div className="bg-white rounded-[3rem] shadow-xl p-10 animate-fade max-w-3xl mx-auto border-4 border-white">
+                                <h2 className="text-2xl font-black text-green-900 mb-8 flex justify-between items-center">
+                                    참여자 정보 입력
+                                    <button onClick={() => setStep('landing')} className="text-xs font-bold text-gray-400 flex items-center gap-1"><Icon name="rotate-ccw" className="w-3 h-3" /> 다시 선택</button>
+                                </h2>
+                                
+                                <div className={`grid ${groupType === 'multi' ? 'grid-cols-2' : 'grid-cols-1'} gap-4 mb-8`}>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-gray-400 ml-2">학급</label>
+                                        <select value={basicInfo.classNum} onChange={e => setBasicInfo({...basicInfo, classNum: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none">
+                                            {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}반</option>)}
+                                        </select>
+                                    </div>
+                                    {groupType === 'multi' && (
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-gray-400 ml-2">모둠 번호</label>
+                                            <select value={basicInfo.groupNum} onChange={e => setBasicInfo({...basicInfo, groupNum: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none">
+                                                {Array.from({length:15}, (_,i)=>i+1).map(n => <option key={n} value={n}>{n}모둠</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-3 mb-10">
+                                    <label className="text-xs font-black text-gray-400 ml-2">{groupType === 'multi' ? '명단 입력' : '학생 정보 입력'}</label>
+                                    {basicInfo.members.map((m, i) => (
+                                        <div key={i} className="flex gap-3 animate-fade">
+                                            <input placeholder="학번(4자리)" value={m.studentId} onChange={e => {
+                                                const n = [...basicInfo.members]; n[i].studentId = e.target.value; setBasicInfo({...basicInfo, members: n});
+                                            }} className="w-1/3 p-4 border rounded-2xl outline-none focus:border-green-400" maxLength={4} />
+                                            <input placeholder="이름" value={m.name} onChange={e => {
+                                                const n = [...basicInfo.members]; n[i].name = e.target.value; setBasicInfo({...basicInfo, members: n});
+                                            }} className="flex-1 p-4 border rounded-2xl outline-none focus:border-green-400" />
+                                        </div>
+                                    ))}
+                                    {groupType === 'multi' && basicInfo.members.length < 5 && (
+                                        <button onClick={() => setBasicInfo({...basicInfo, members: [...basicInfo.members, {id:Date.now(), name:'', studentId:''}]})} className="w-full p-4 border-2 border-dashed border-green-200 text-green-600 font-bold rounded-2xl">+ 인원 추가</button>
+                                    )}
+                                </div>
+
+                                <button onClick={() => setStep('activity')} disabled={basicInfo.members.some(m => !m.name || m.studentId.length < 4)} className="w-full p-5 bg-green-600 text-white rounded-[2rem] font-black text-xl shadow-lg disabled:opacity-30 transition-all">시작하기</button>
+                            </div>
+                        )}
+
+                        {step === 'activity' && (
+                            <div className="flex flex-col lg:flex-row gap-8 animate-fade">
+                                <aside className="lg:w-64 flex flex-row lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-4 lg:pb-0 scrollbar-hide">
+                                    {[
+                                        {id:1, label:'1차시: 주제 설정', icon:'layout'},
+                                        {id:2, label:'2차시: 사례/정책', icon:'file-text'},
+                                        {id:3, label:'3-4차시: 해결방안', icon:'help-circle'},
+                                        {id:5, label:'5-6차시: 결과물제작', icon:'pen-tool'},
+                                        {id:99, label:'최종 저장/제출', icon:'download'}
+                                    ].map(item => (
+                                        <button key={item.id} onClick={() => setCurrentSession(item.id)} className={`flex items-center gap-3 p-5 rounded-[2rem] font-black transition-all shrink-0 lg:w-full ${currentSession === item.id ? 'bg-green-600 text-white shadow-xl scale-105' : 'bg-white text-gray-400 hover:bg-green-50'}`}>
+                                            <Icon name={item.icon} /> <span className="text-sm">{item.label}</span>
+                                        </button>
+                                    ))}
+                                </aside>
+
+                                <div className="flex-1 bg-white rounded-[3.5rem] shadow-xl p-8 md:p-12 border-4 border-white relative min-h-[600px]">
+                                    {currentSession === 1 && (
+                                        <div className="space-y-8 animate-fade">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h2 className="text-3xl font-black text-green-900 mb-2">1차시: 주제 설정</h2>
+                                                    <button onClick={() => setShowExamples(!showExamples)} className="text-xs font-bold text-green-600 bg-green-50 px-4 py-2 rounded-full flex items-center gap-2 mt-2">
+                                                        <Icon name="book-open" className="w-3 h-3" /> 교과융합 예시 주제 보기
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {showExamples && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-3xl border border-gray-100 max-h-60 overflow-y-auto custom-scroll">
+                                                    {exampleThemes.map((ex, i) => (
+                                                        <div key={i} className="p-3 bg-white rounded-2xl text-[11px] shadow-sm">
+                                                            <b className="text-green-700">[{ex.field}]</b> {ex.title}
+                                                            <p className="text-gray-400 mt-1">{ex.desc}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="grid md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">진로분야</label>
+                                                    <select value={formData.session1.field} onChange={e => handleInputChange('session1', 'field', e.target.value)} disabled={isExpired(1)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none">
+                                                        <option value="">분야 선택</option>
+                                                        {['예체능','의료/보건','사회','자연','교육','인문','공학','기타'].map(f => <option key={f}>{f}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">지속가능발전목표 (SDGs)</label>
+                                                    <select value={formData.session1.sdg} onChange={e => handleInputChange('session1', 'sdg', e.target.value)} disabled={isExpired(1)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none">
+                                                        <option value="">17가지 목표 중 선택</option>
+                                                        {sdgGoals.map(g => <option key={g} value={g}>{g}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <input placeholder="활동 제목" value={formData.session1.title} onChange={e => handleInputChange('session1', 'title', e.target.value)} disabled={isExpired(1)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] font-bold outline-none focus:border-green-400" />
+                                                <textarea placeholder="활동 개요 (간략하게)" value={formData.session1.summary} onChange={e => handleInputChange('session1', 'summary', e.target.value)} disabled={isExpired(1)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-24 outline-none focus:border-green-400" />
+                                                <input placeholder="지역 연계 요소 (안성시청, 안성 로컬푸드 매장 등)" value={formData.session1.regionalLink} onChange={e => handleInputChange('session1', 'regionalLink', e.target.value)} disabled={isExpired(1)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] outline-none focus:border-green-400" />
+                                            </div>
+
+                                            <div className="bg-green-50 p-8 rounded-[2.5rem] border-2 border-green-100 space-y-4">
+                                                <h3 className="font-black text-green-800 text-sm">융합 교과 구성 (2과목 이상)</h3>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <input placeholder="과목 1" value={formData.session1.subjects[0]} onChange={e => handleInputChange('session1', 'subjects', e.target.value, 0)} className="p-4 bg-white rounded-2xl outline-none" />
+                                                    <input placeholder="과목 2" value={formData.session1.subjects[1]} onChange={e => handleInputChange('session1', 'subjects', e.target.value, 1)} className="p-4 bg-white rounded-2xl outline-none" />
+                                                </div>
+                                                <textarea placeholder="교과 융합 이유 (배운 내용과 연결하여)" value={formData.session1.reason} onChange={e => handleInputChange('session1', 'reason', e.target.value)} className="w-full p-4 bg-white rounded-2xl h-24 outline-none" />
+                                            </div>
+
+                                            <textarea placeholder="안성의 사회 문제 찾기 (현황 및 탐구 동기)" value={formData.session1.problem} onChange={e => handleInputChange('session1', 'problem', e.target.value)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-24 outline-none focus:border-green-400" />
+                                            
+                                            {/* 기록자 영역 - 안정적인 상태 관리를 위해 컴포넌트 내부에서 직접 선언 */}
+                                            <div className="mt-8 pt-6 border-t border-green-100 flex flex-col md:flex-row gap-4 items-end bg-green-50/50 p-6 rounded-[2rem]">
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 학번</label>
+                                                    <input placeholder="3101" maxLength={4} value={formData.session1.writerId} onChange={e => handleInputChange('session1', 'writerId', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 이름</label>
+                                                    <input placeholder="이름" value={formData.session1.writerName} onChange={e => handleInputChange('session1', 'writerName', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {currentSession === 2 && (
+                                        <div className="space-y-8 animate-fade">
+                                            <h2 className="text-3xl font-black text-green-900">2차시: 사례 및 정책 분석</h2>
+                                            <div className="space-y-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">실제 안성의 문제 사례 / 성공 분야</label>
+                                                    <textarea value={formData.session2.cases} onChange={e => handleInputChange('session2', 'cases', e.target.value)} disabled={isExpired(2)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-32 outline-none focus:border-green-400" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">해결을 위해 시행되는 정책 조사 및 한계점 분석</label>
+                                                    <textarea value={formData.session2.policies} onChange={e => handleInputChange('session2', 'policies', e.target.value)} disabled={isExpired(2)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-32 outline-none focus:border-green-400" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">관련 자료 출처 링크 (2개 이상)</label>
+                                                    <input placeholder="링크 1" value={formData.session2.links[0]} onChange={e => handleInputChange('session2', 'links', e.target.value, 0)} className="w-full p-4 border rounded-2xl mb-2" />
+                                                    <input placeholder="링크 2" value={formData.session2.links[1]} onChange={e => handleInputChange('session2', 'links', e.target.value, 1)} className="w-full p-4 border rounded-2xl" />
+                                                </div>
+                                            </div>
+                                            <div className="mt-8 pt-6 border-t border-green-100 flex flex-col md:flex-row gap-4 items-end bg-green-50/50 p-6 rounded-[2rem]">
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 학번</label>
+                                                    <input placeholder="3101" maxLength={4} value={formData.session2.writerId} onChange={e => handleInputChange('session2', 'writerId', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 이름</label>
+                                                    <input placeholder="이름" value={formData.session2.writerName} onChange={e => handleInputChange('session2', 'writerName', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {currentSession === 3 && (
+                                        <div className="space-y-8 animate-fade">
+                                            <h2 className="text-3xl font-black text-green-900">3-4차시: 해결방안</h2>
+                                            <div className="space-y-4">
+                                                <textarea placeholder="구체적인 해결방안을 서술하세요." value={formData.session3_4.solution} onChange={e => handleInputChange('session3_4', 'solution', e.target.value)} disabled={isExpired(3)} className="w-full p-6 border-2 border-gray-50 rounded-[2rem] h-64 outline-none focus:border-green-400 text-lg leading-relaxed" />
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">참고 자료 출처 링크</label>
+                                                    <input placeholder="링크 1" value={formData.session3_4.links[0]} onChange={e => handleInputChange('session3_4', 'links', e.target.value, 0)} className="w-full p-4 border rounded-2xl mb-2" />
+                                                    <input placeholder="링크 2" value={formData.session3_4.links[1]} onChange={e => handleInputChange('session3_4', 'links', e.target.value, 1)} className="w-full p-4 border rounded-2xl" />
+                                                </div>
+                                            </div>
+                                            <div className="mt-8 pt-6 border-t border-green-100 flex flex-col md:flex-row gap-4 items-end bg-green-50/50 p-6 rounded-[2rem]">
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 학번</label>
+                                                    <input placeholder="3101" maxLength={4} value={formData.session3_4.writerId} onChange={e => handleInputChange('session3_4', 'writerId', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 이름</label>
+                                                    <input placeholder="이름" value={formData.session3_4.writerName} onChange={e => handleInputChange('session3_4', 'writerName', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {currentSession === 5 && (
+                                        <div className="space-y-8 animate-fade">
+                                            <h2 className="text-3xl font-black text-green-900">5-6차시: 결과물 제작 계획</h2>
+                                            <div className="space-y-6">
+                                                <input placeholder="결과물 종류 (포스터, 릴스, UCC 등)" value={formData.session5_6.plan} onChange={e => handleInputChange('session5_6', 'plan', e.target.value)} disabled={isExpired(5)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] font-bold outline-none focus:border-green-400" />
+                                                <input placeholder="제작 도구 (캔바, 캡컷 등)" value={formData.session5_6.tool} onChange={e => handleInputChange('session5_6', 'tool', e.target.value)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] outline-none" />
+                                                <textarea placeholder="상세 설명" value={formData.session5_6.description} onChange={e => handleInputChange('session5_6', 'description', e.target.value)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-24 outline-none" />
+                                                <div className="p-8 bg-yellow-50 rounded-[2.5rem] border-2 border-yellow-100 space-y-3">
+                                                    <h3 className="font-black text-yellow-800 text-sm">👥 역할 분담</h3>
+                                                    {formData.session5_6.roles.map((r, i) => (
+                                                        <div key={i} className="flex gap-2">
+                                                            <input placeholder="이름" value={r.name} onChange={e => {
+                                                                const n = [...formData.session5_6.roles]; n[i].name = e.target.value;
+                                                                handleInputChange('session5_6', 'roles', n);
+                                                            }} className="w-1/3 p-3 bg-white border-none rounded-xl text-sm" />
+                                                            <input placeholder="역할" value={r.role} onChange={e => {
+                                                                const n = [...formData.session5_6.roles]; n[i].role = e.target.value;
+                                                                handleInputChange('session5_6', 'roles', n);
+                                                            }} className="flex-1 p-3 bg-white border-none rounded-xl text-sm" />
+                                                        </div>
+                                                    ))}
+                                                    <button onClick={() => handleInputChange('session5_6', 'roles', [...formData.session5_6.roles, {name:'', role:''}])} className="text-[10px] bg-yellow-400 text-white px-3 py-1 rounded-full">+ 추가</button>
+                                                </div>
+                                            </div>
+                                            <div className="mt-8 pt-6 border-t border-green-100 flex flex-col md:flex-row gap-4 items-end bg-green-50/50 p-6 rounded-[2rem]">
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 학번</label>
+                                                    <input placeholder="3101" maxLength={4} value={formData.session5_6.writerId} onChange={e => handleInputChange('session5_6', 'writerId', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 이름</label>
+                                                    <input placeholder="이름" value={formData.session5_6.writerName} onChange={e => handleInputChange('session5_6', 'writerName', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {currentSession === 99 && (
+                                        <div className="flex flex-col items-center justify-center py-20 animate-fade text-center space-y-10">
+                                            <div className="w-24 h-24 bg-green-600 text-white rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+                                                <Icon name="check" className="w-12 h-12" />
+                                            </div>
+                                            <h2 className="text-4xl font-black text-green-900">활동 완료!</h2>
+                                            <button onClick={downloadHTML} className="w-full max-w-sm p-6 bg-green-600 text-white rounded-[2rem] font-black text-xl shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-3">
+                                                <Icon name="file-code" className="w-6 h-6" /> HTML 파일로 저장하기
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {currentSession !== 99 && (
+                                        <div className="mt-12 pt-8 border-t border-gray-100 flex justify-between items-center">
+                                            <button onClick={() => setCurrentSession(p => p === 5 ? 3 : p === 3 ? 2 : p - 1)} disabled={currentSession === 1} className="flex items-center gap-2 font-black text-gray-300 hover:text-green-600 disabled:opacity-0 transition-colors">
+                                                <Icon name="chevron-left" /> 이전
+                                            </button>
+                                            <button onClick={() => setCurrentSession(p => p === 1 ? 2 : p === 2 ? 3 : p === 3 ? 5 : 99)} className="px-12 py-5 bg-green-600 text-white rounded-[2rem] font-black text-lg shadow-lg hover:bg-green-700 transition-all flex items-center gap-2">
+                                                다음 단계 <Icon name="chevron-right" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
