@@ -33,10 +33,15 @@
         // =============================================
         // 아래 두 값을 본인의 Supabase 프로젝트 값으로 교체하세요.
         // Supabase 대시보드 → Project Settings → API 에서 확인 가능
-        const SUPABASE_URL = 'https://hnhcgnrbpijnkaeomxsy.supabase.co/rest/v1/';
+        const SUPABASE_URL = 'https://hnhcgnrbpijnkaeomxsy.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuaGNnbnJicGlqbmthZW9teHN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjcxMjYsImV4cCI6MjA5MjU0MzEyNn0.6NUUVudRw7osey9rxVHcrMCPId1aIK4XTd6vQ4rUpZ4';
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let supabase;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch(e) {
+            console.error('Supabase 초기화 오류:', e);
+        }
 
         // =============================================
         // 관리자 비밀번호 설정
@@ -91,12 +96,26 @@
 
             const fetchAll = async () => {
                 setLoading(true);
-                const { data, error } = await supabase
-                    .from('submissions')
-                    .select('*')
-                    .order('submitted_at', { ascending: false });
-                if (!error) setSubmissions(data || []);
-                setLoading(false);
+                try {
+                    if (!supabase) {
+                        console.error('Supabase가 초기화되지 않았습니다.');
+                        setLoading(false);
+                        return;
+                    }
+                    const { data, error } = await supabase
+                        .from('submissions')
+                        .select('*')
+                        .order('submitted_at', { ascending: false });
+                    if (error) {
+                        console.error('데이터 조회 오류:', error);
+                    } else {
+                        setSubmissions(data || []);
+                    }
+                } catch(e) {
+                    console.error('fetchAll 예외:', e);
+                } finally {
+                    setLoading(false);
+                }
             };
 
             const filtered = submissions.filter(s => {
@@ -495,6 +514,10 @@ h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px
             // Supabase 제출 함수
             // =============================================
             const handleSubmit = async () => {
+                if (!supabase) {
+                    showToast('DB 연결 오류: Supabase가 초기화되지 않았습니다. URL/KEY를 확인해주세요.', 'error');
+                    return;
+                }
                 setIsSubmitting(true);
                 showToast('제출 중...', 'loading');
 
@@ -536,18 +559,22 @@ h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px
                     submitted_at: new Date().toISOString()
                 };
 
-                const { error } = await supabase.from('submissions').insert([payload]);
+                try {
+                    const { error } = await supabase.from('submissions').insert([payload]);
+                    setIsSubmitting(false);
 
-                setIsSubmitting(false);
-
-                if (error) {
-                    console.error('Supabase 오류:', error);
-                    showToast('제출 실패: ' + error.message, 'error');
-                } else {
-                    hideToast();
-                    setSubmitDone(true);
-                    setCurrentSession(99);
-                    showToast('제출 완료! 수고하셨습니다 🎉', 'success');
+                    if (error) {
+                        console.error('Supabase 오류:', error);
+                        showToast('제출 실패: ' + (error.message || JSON.stringify(error)), 'error');
+                    } else {
+                        hideToast();
+                        setSubmitDone(true);
+                        showToast('제출 완료! 수고하셨습니다 🎉', 'success');
+                    }
+                } catch (e) {
+                    console.error('제출 중 예외 발생:', e);
+                    setIsSubmitting(false);
+                    showToast('제출 중 오류 발생: ' + (e.message || '알 수 없는 오류'), 'error');
                 }
             };
 
