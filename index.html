@@ -9,6 +9,10 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- JSZip: ZIP 파일 생성용 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
         body { font-family: 'Pretendard', sans-serif; background-color: #F8FCF8; color: #1f2937; }
@@ -24,17 +28,407 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
+        // =============================================
+        // Supabase 설정
+        // =============================================
+        // 아래 두 값을 본인의 Supabase 프로젝트 값으로 교체하세요.
+        // Supabase 대시보드 → Project Settings → API 에서 확인 가능
+        const SUPABASE_URL = 'https://여기에-프로젝트-URL.supabase.co';
+        const SUPABASE_ANON_KEY = '여기에-anon-public-key를-붙여넣으세요';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // =============================================
+        // 관리자 비밀번호 설정
+        // =============================================
+        // 원하는 비밀번호로 변경하세요
+        const ADMIN_PASSWORD = 'ansung2026';
+
+        // =============================================
+        // 아이콘 컴포넌트
+        // =============================================
         const Icon = ({ name, className = "w-5 h-5" }) => {
             useEffect(() => { lucide.createIcons(); }, [name]);
             return <i data-lucide={name} className={className}></i>;
         };
 
+        // =============================================
+        // 토스트 알림 컴포넌트
+        // =============================================
+        const Toast = ({ message, type, onClose }) => {
+            useEffect(() => {
+                const t = setTimeout(onClose, 3500);
+                return () => clearTimeout(t);
+            }, []);
+            const colors = {
+                success: 'bg-green-600',
+                error: 'bg-red-500',
+                loading: 'bg-gray-700'
+            };
+            return (
+                <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-bold shadow-2xl animate-fade ${colors[type]}`}>
+                    {type === 'loading' && <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
+                    {type === 'success' && <Icon name="check-circle" />}
+                    {type === 'error' && <Icon name="x-circle" />}
+                    <span>{message}</span>
+                </div>
+            );
+        };
+
+        // =============================================
+        // 관리자 패널 컴포넌트
+        // =============================================
+        const AdminPanel = ({ onLogout }) => {
+            const { useState: useS, useEffect: useE } = React;
+            const [submissions, setSubmissions] = useS([]);
+            const [loading, setLoading] = useS(true);
+            const [filterClass, setFilterClass] = useS('전체');
+            const [sortBy, setSortBy] = useS('submitted_at');
+            const [downloading, setDownloading] = useS(false);
+            const [searchQuery, setSearchQuery] = useS('');
+
+            useE(() => { fetchAll(); }, []);
+
+            const fetchAll = async () => {
+                setLoading(true);
+                const { data, error } = await supabase
+                    .from('submissions')
+                    .select('*')
+                    .order('submitted_at', { ascending: false });
+                if (!error) setSubmissions(data || []);
+                setLoading(false);
+            };
+
+            const filtered = submissions.filter(s => {
+                const classOk = filterClass === '전체' || s.class_num === filterClass;
+                const q = searchQuery.toLowerCase();
+                const nameMatch = (s.members || []).some(m => m.name?.includes(q) || m.studentId?.includes(q));
+                const titleMatch = (s.s1_title || '').toLowerCase().includes(q);
+                return classOk && (q === '' || nameMatch || titleMatch);
+            }).sort((a, b) => {
+                if (sortBy === 'class') return a.class_num?.localeCompare(b.class_num) || 0;
+                if (sortBy === 'title') return (a.s1_title || '').localeCompare(b.s1_title || '');
+                return new Date(b.submitted_at) - new Date(a.submitted_at);
+            });
+
+            // 완성도 계산 (4개 차시 중 몇 개 작성했는지)
+            const getProgress = (s) => {
+                let count = 0;
+                if (s.s1_title) count++;
+                if (s.s2_cases) count++;
+                if (s.s3_solution) count++;
+                if (s.s5_plan) count++;
+                return count;
+            };
+
+            const progressColor = (n) => {
+                if (n === 4) return 'bg-green-500';
+                if (n >= 2) return 'bg-yellow-400';
+                return 'bg-red-400';
+            };
+
+            // 단일 HTML 보고서 생성
+            const buildHTML = (s) => {
+                const members = (s.members || []).map(m => `${m.studentId} ${m.name}`).join(', ');
+                const groupLabel = s.group_type === 'multi' ? `${s.group_num}모둠` : '개인';
+                return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>안성여고 프로젝트 결과보고서</title>
+<style>
+body{font-family:sans-serif;padding:40px;line-height:1.6;color:#333;max-width:800px;margin:0 auto}
+h1{color:#059669;border-bottom:3px solid #059669;padding-bottom:10px;text-align:center}
+h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px;font-size:1.2rem}
+.info-box{background:#f9fafb;padding:20px;border-radius:10px;margin-bottom:20px;border:1px solid #e5e7eb}
+.writer{font-size:.9em;color:#059669;font-weight:bold;text-align:right;background:#f0fdf4;padding:5px 10px;border-radius:5px;display:inline-block;float:right}
+.clear{clear:both}p{margin:8px 0}b{color:#111}
+</style></head><body>
+<h1>안성여고 지속가능한 공동체 프로젝트 결과물</h1>
+<div class="info-box">
+  <p><b>학급:</b> 3학년 ${s.class_num}반 ${groupLabel}</p>
+  <p><b>참여자:</b> ${members}</p>
+  <p><b>제출일시:</b> ${new Date(s.submitted_at).toLocaleString('ko-KR')}</p>
+</div>
+<h2>1차시: 주제 설정</h2>
+<p><b>진로분야:</b> ${s.s1_field||''} | <b>SDG 목표:</b> ${s.s1_sdg||''}</p>
+<p><b>활동제목:</b> ${s.s1_title||''}</p>
+<p><b>활동개요:</b> ${s.s1_summary||''}</p>
+<p><b>지역연계 요소:</b> ${s.s1_regional_link||''}</p>
+<p><b>융합 교과:</b> ${(s.s1_subjects||[]).filter(Boolean).join(', ')}</p>
+<p><b>교과 융합 이유:</b> ${s.s1_reason||''}</p>
+<p><b>안성의 사회 문제:</b> ${s.s1_problem||''}</p>
+<div class="writer">기록자: ${s.s1_writer_id||''} ${s.s1_writer_name||''}</div><div class="clear"></div>
+<h2>2차시: 사례 및 정책 분석</h2>
+<p><b>문제 사례/성공분야:</b> ${s.s2_cases||''}</p>
+<p><b>정책 조사 및 한계점:</b> ${s.s2_policies||''}</p>
+<p><b>관련 자료 링크:</b> ${(s.s2_links||[]).filter(Boolean).join(', ')}</p>
+<div class="writer">기록자: ${s.s2_writer_id||''} ${s.s2_writer_name||''}</div><div class="clear"></div>
+<h2>3-4차시: 해결방안</h2>
+<p><b>구체적 해결방안:</b> ${s.s3_solution||''}</p>
+<p><b>참고 자료 링크:</b> ${(s.s3_links||[]).filter(Boolean).join(', ')}</p>
+<div class="writer">기록자: ${s.s3_writer_id||''} ${s.s3_writer_name||''}</div><div class="clear"></div>
+<h2>5-6차시: 결과물 제작 계획</h2>
+<p><b>결과물 종류:</b> ${s.s5_plan||''}</p>
+<p><b>제작 도구:</b> ${s.s5_tool||''}</p>
+<p><b>상세 설명:</b> ${s.s5_description||''}</p>
+<p><b>역할 분담:</b> ${(s.s5_roles||[]).map(r=>`${r.name}(${r.role})`).join(', ')}</p>
+<div class="writer">기록자: ${s.s5_writer_id||''} ${s.s5_writer_name||''}</div><div class="clear"></div>
+</body></html>`;
+            };
+
+            // ZIP 다운로드 (HTML 묶음 + CSV)
+            const downloadAll = async () => {
+                if (filtered.length === 0) return;
+                setDownloading(true);
+                const zip = new JSZip();
+                const folder = zip.folder('안성여고_프로젝트_결과물');
+
+                // 개별 HTML 파일
+                filtered.forEach(s => {
+                    const members = (s.members || []);
+                    const nameStr = members.map(m => m.name).join('_') || 'unknown';
+                    const groupLabel = s.group_type === 'multi' ? `${s.group_num}모둠` : nameStr;
+                    const fileName = `3학년_${s.class_num}반_${groupLabel}_보고서.html`;
+                    folder.file(fileName, buildHTML(s));
+                });
+
+                // CSV
+                const csvHeader = ['제출일시','반','모둠/개인','참여자','활동제목','SDG','진로분야','1차시완성','2차시완성','3차시완성','5차시완성'];
+                const csvRows = filtered.map(s => {
+                    const members = (s.members||[]).map(m=>`${m.studentId} ${m.name}`).join(' ');
+                    const groupLabel = s.group_type === 'multi' ? `${s.group_num}모둠` : '개인';
+                    return [
+                        new Date(s.submitted_at).toLocaleString('ko-KR'),
+                        `${s.class_num}반`,
+                        groupLabel,
+                        members,
+                        s.s1_title||'',
+                        s.s1_sdg||'',
+                        s.s1_field||'',
+                        s.s1_title ? 'O' : 'X',
+                        s.s2_cases ? 'O' : 'X',
+                        s.s3_solution ? 'O' : 'X',
+                        s.s5_plan ? 'O' : 'X',
+                    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+                });
+                const csvContent = '\uFEFF' + [csvHeader.join(','), ...csvRows].join('\n');
+                folder.file('전체_제출_목록.csv', csvContent);
+
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `안성여고_프로젝트_${new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','')}_.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+                setDownloading(false);
+            };
+
+            // 단일 HTML 다운로드
+            const downloadOne = (s) => {
+                const members = (s.members || []);
+                const nameStr = members.map(m => m.name).join('_') || 'unknown';
+                const groupLabel = s.group_type === 'multi' ? `${s.group_num}모둠` : nameStr;
+                const fileName = `3학년_${s.class_num}반_${groupLabel}_보고서.html`;
+                const blob = new Blob([buildHTML(s)], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = fileName; a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            const statTotal = submissions.length;
+            const statDone = submissions.filter(s => getProgress(s) === 4).length;
+            const statByClass = [1,2,3,4,5,6].map(n => ({
+                cls: n,
+                count: submissions.filter(s => s.class_num === String(n)).length
+            }));
+
+            return (
+                <div className="min-h-screen pb-20 bg-gray-50">
+                    {/* 관리자 헤더 */}
+                    <header className="bg-white border-b border-gray-100 px-8 py-5 flex justify-between items-center sticky top-0 z-40 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-indigo-600 p-2 rounded-xl">
+                                <Icon name="shield" className="text-white w-5 h-5" />
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-black text-gray-900">관리자 대시보드</h1>
+                                <p className="text-xs text-gray-400">안성여고 지속가능한 공동체 프로젝트</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button onClick={fetchAll} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all">
+                                <Icon name="refresh-cw" className="w-4 h-4" /> 새로고침
+                            </button>
+                            <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-500 rounded-xl font-bold text-sm hover:bg-red-100 transition-all">
+                                <Icon name="log-out" className="w-4 h-4" /> 로그아웃
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="max-w-7xl mx-auto px-6 py-8">
+
+                        {/* 통계 카드 */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <p className="text-xs font-bold text-gray-400 mb-1">전체 제출</p>
+                                <p className="text-3xl font-black text-indigo-600">{statTotal}<span className="text-sm text-gray-400 ml-1">건</span></p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <p className="text-xs font-bold text-gray-400 mb-1">전 차시 완성</p>
+                                <p className="text-3xl font-black text-green-600">{statDone}<span className="text-sm text-gray-400 ml-1">건</span></p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 col-span-2">
+                                <p className="text-xs font-bold text-gray-400 mb-2">반별 제출 현황</p>
+                                <div className="flex gap-2 flex-wrap">
+                                    {statByClass.map(({cls, count}) => (
+                                        <div key={cls} className="flex items-center gap-1">
+                                            <span className="text-xs text-gray-500 font-bold">{cls}반</span>
+                                            <span className={`text-xs font-black px-2 py-0.5 rounded-full ${count > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>{count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 필터 + 다운로드 */}
+                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+                            <div className="flex gap-3 flex-wrap items-center w-full md:w-auto">
+                                <input
+                                    placeholder="이름, 학번, 제목 검색..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="px-4 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-400 w-48"
+                                />
+                                <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none">
+                                    <option>전체</option>
+                                    {[1,2,3,4,5,6].map(n => <option key={n} value={String(n)}>{n}반</option>)}
+                                </select>
+                                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none">
+                                    <option value="submitted_at">최신순</option>
+                                    <option value="class">반 순</option>
+                                    <option value="title">제목순</option>
+                                </select>
+                                <span className="text-sm text-gray-400 font-bold">{filtered.length}건</span>
+                            </div>
+                            <button
+                                onClick={downloadAll}
+                                disabled={downloading || filtered.length === 0}
+                                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-sm shadow-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-40 whitespace-nowrap"
+                            >
+                                {downloading
+                                    ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> 생성 중...</>
+                                    : <><Icon name="download" className="w-4 h-4" /> 전체 ZIP 다운로드</>
+                                }
+                            </button>
+                        </div>
+
+                        {/* 제출 목록 */}
+                        {loading ? (
+                            <div className="text-center py-20 text-gray-400 font-bold">불러오는 중...</div>
+                        ) : filtered.length === 0 ? (
+                            <div className="text-center py-20 text-gray-400 font-bold">제출된 데이터가 없습니다</div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filtered.map((s, i) => {
+                                    const prog = getProgress(s);
+                                    const members = (s.members || []).map(m => `${m.studentId} ${m.name}`).join(', ');
+                                    const groupLabel = s.group_type === 'multi' ? `${s.class_num}반 ${s.group_num}모둠` : `${s.class_num}반 개인`;
+                                    return (
+                                        <div key={s.id || i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center gap-4">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                    <span className="text-xs font-black px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">{groupLabel}</span>
+                                                    <span className="text-xs text-gray-400">{new Date(s.submitted_at).toLocaleString('ko-KR')}</span>
+                                                </div>
+                                                <p className="font-black text-gray-900 text-base truncate">{s.s1_title || '(제목 미입력)'}</p>
+                                                <p className="text-xs text-gray-500 mt-0.5 truncate">{members}</p>
+                                                {/* 차시별 진행도 */}
+                                                <div className="flex gap-1.5 mt-2">
+                                                    {[
+                                                        { label:'1차시', done: !!s.s1_title },
+                                                        { label:'2차시', done: !!s.s2_cases },
+                                                        { label:'3차시', done: !!s.s3_solution },
+                                                        { label:'5차시', done: !!s.s5_plan },
+                                                    ].map(({label, done}) => (
+                                                        <span key={label} className={`text-[10px] font-black px-2 py-0.5 rounded-full ${done ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                                                            {label} {done ? '✓' : '✗'}
+                                                        </span>
+                                                    ))}
+                                                    <div className="ml-1 flex items-center gap-1">
+                                                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                            <div className={`h-full rounded-full transition-all ${progressColor(prog)}`} style={{width: `${prog/4*100}%`}}></div>
+                                                        </div>
+                                                        <span className="text-[10px] text-gray-400 font-bold">{prog}/4</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => downloadOne(s)}
+                                                className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all whitespace-nowrap"
+                                            >
+                                                <Icon name="file-down" className="w-4 h-4" /> HTML 저장
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // =============================================
+        // 관리자 로그인 화면
+        // =============================================
+        const AdminLogin = ({ onSuccess }) => {
+            const [pw, setPw] = React.useState('');
+            const [err, setErr] = React.useState(false);
+            const tryLogin = () => {
+                if (pw === ADMIN_PASSWORD) { onSuccess(); }
+                else { setErr(true); setTimeout(() => setErr(false), 1500); }
+            };
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                    <div className="bg-white rounded-[2.5rem] shadow-xl p-10 w-full max-w-sm text-center border border-gray-100">
+                        <div className="w-16 h-16 bg-indigo-100 rounded-[1.2rem] flex items-center justify-center mx-auto mb-6">
+                            <Icon name="shield" className="w-8 h-8 text-indigo-600" />
+                        </div>
+                        <h2 className="text-2xl font-black text-gray-900 mb-1">관리자 로그인</h2>
+                        <p className="text-sm text-gray-400 mb-8">비밀번호를 입력하세요</p>
+                        <input
+                            type="password"
+                            value={pw}
+                            onChange={e => setPw(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && tryLogin()}
+                            placeholder="비밀번호"
+                            className={`w-full p-4 border-2 rounded-2xl text-center font-bold outline-none transition-all mb-4 ${err ? 'border-red-400 bg-red-50' : 'border-gray-100 focus:border-indigo-400'}`}
+                        />
+                        {err && <p className="text-red-500 text-sm font-bold mb-3">비밀번호가 틀렸습니다</p>}
+                        <button onClick={tryLogin} className="w-full p-4 bg-indigo-600 text-white rounded-2xl font-black text-lg hover:bg-indigo-700 transition-all">
+                            입장하기
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // =============================================
+        // 메인 앱
+        // =============================================
         const App = () => {
+            const [adminMode, setAdminMode] = useState('off'); // 'off' | 'login' | 'panel'
             const [step, setStep] = useState('landing');
             const [currentSession, setCurrentSession] = useState(1);
             const [groupType, setGroupType] = useState(null);
             const [showExamples, setShowExamples] = useState(false);
             const [currentTime, setCurrentTime] = useState(new Date());
+            const [toast, setToast] = useState(null);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [submitDone, setSubmitDone] = useState(false);
+
+            const showToast = (message, type = 'success') => setToast({ message, type });
+            const hideToast = () => setToast(null);
 
             const sdgGoals = [
                 "1. 빈곤층 감소와 사회안전망 강화", "2. 먹거리 안보와 지속가능한 농업", "3. 건강하고 행복한 삶 보장",
@@ -97,6 +491,67 @@
                 });
             }, []);
 
+            // =============================================
+            // Supabase 제출 함수
+            // =============================================
+            const handleSubmit = async () => {
+                setIsSubmitting(true);
+                showToast('제출 중...', 'loading');
+
+                const payload = {
+                    group_type: groupType,
+                    class_num: basicInfo.classNum,
+                    group_num: groupType === 'multi' ? basicInfo.groupNum : null,
+                    members: basicInfo.members,
+                    // 1차시
+                    s1_field: formData.session1.field,
+                    s1_sdg: formData.session1.sdg,
+                    s1_title: formData.session1.title,
+                    s1_summary: formData.session1.summary,
+                    s1_regional_link: formData.session1.regionalLink,
+                    s1_subjects: formData.session1.subjects,
+                    s1_reason: formData.session1.reason,
+                    s1_problem: formData.session1.problem,
+                    s1_writer_id: formData.session1.writerId,
+                    s1_writer_name: formData.session1.writerName,
+                    // 2차시
+                    s2_cases: formData.session2.cases,
+                    s2_policies: formData.session2.policies,
+                    s2_links: formData.session2.links,
+                    s2_writer_id: formData.session2.writerId,
+                    s2_writer_name: formData.session2.writerName,
+                    // 3-4차시
+                    s3_solution: formData.session3_4.solution,
+                    s3_links: formData.session3_4.links,
+                    s3_writer_id: formData.session3_4.writerId,
+                    s3_writer_name: formData.session3_4.writerName,
+                    // 5-6차시
+                    s5_plan: formData.session5_6.plan,
+                    s5_tool: formData.session5_6.tool,
+                    s5_description: formData.session5_6.description,
+                    s5_roles: formData.session5_6.roles,
+                    s5_writer_id: formData.session5_6.writerId,
+                    s5_writer_name: formData.session5_6.writerName,
+                    // 제출 시각
+                    submitted_at: new Date().toISOString()
+                };
+
+                const { error } = await supabase.from('submissions').insert([payload]);
+
+                setIsSubmitting(false);
+
+                if (error) {
+                    console.error('Supabase 오류:', error);
+                    showToast('제출 실패: ' + error.message, 'error');
+                } else {
+                    hideToast();
+                    setSubmitDone(true);
+                    setCurrentSession(99);
+                    showToast('제출 완료! 수고하셨습니다 🎉', 'success');
+                }
+            };
+
+            // HTML 다운로드 (기존 기능 유지)
             const downloadHTML = () => {
                 const info = basicInfo;
                 const s1 = formData.session1;
@@ -127,7 +582,6 @@
                         <p><b>학급:</b> 3학년 ${info.classNum}반 ${groupType === 'multi' ? `${info.groupNum}모둠` : '개별활동'}</p>
                         <p><b>참여자:</b> ${info.members.map(m => `${m.studentId} ${m.name}`).join(', ')}</p>
                     </div>
-
                     <h2>1차시: 주제별 문제의식 공유</h2>
                     <p><b>진로분야:</b> ${s1.field} | <b>SDG 목표:</b> ${s1.sdg}</p>
                     <p><b>활동제목:</b> ${s1.title}</p>
@@ -138,20 +592,17 @@
                     <p><b>안성의 사회 문제:</b> ${s1.problem}</p>
                     <div class="writer">기록자: ${s1.writerId} ${s1.writerName}</div>
                     <div class="clear"></div>
-
                     <h2>2차시: 사례 및 정책 분석</h2>
                     <p><b>안성의 문제 사례/성공분야:</b> ${s2.cases}</p>
                     <p><b>정책 조사 및 한계점 분석:</b> ${s2.policies}</p>
                     <p><b>관련 자료 링크:</b> ${s2.links.filter(l => l).join(', ')}</p>
                     <div class="writer">기록자: ${s2.writerId} ${s2.writerName}</div>
                     <div class="clear"></div>
-
                     <h2>3-4차시: 우리 모둠 해결방안</h2>
                     <p><b>구체적 해결방안:</b> ${s3.solution}</p>
                     <p><b>참고 자료 링크:</b> ${s3.links.filter(l => l).join(', ')}</p>
                     <div class="writer">기록자: ${s3.writerId} ${s3.writerName}</div>
                     <div class="clear"></div>
-
                     <h2>5-6차시: 결과물 제작 계획</h2>
                     <p><b>결과물 종류:</b> ${s5.plan}</p>
                     <p><b>제작 도구:</b> ${s5.tool}</p>
@@ -174,8 +625,13 @@
                 URL.revokeObjectURL(url);
             };
 
+            if (adminMode === 'login') return <AdminLogin onSuccess={() => setAdminMode('panel')} />;
+            if (adminMode === 'panel') return <AdminPanel onLogout={() => setAdminMode('off')} />;
+
             return (
                 <div className="min-h-screen pb-20">
+                    {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+
                     <header className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row justify-between items-center gap-6">
                         <div onClick={() => step !== 'landing' && setStep('landing')} className="cursor-pointer group text-center md:text-left">
                             <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
@@ -190,6 +646,9 @@
                             <p className="text-[10px] font-bold text-gray-400 leading-none uppercase">Current Time</p>
                             <p className="text-xl font-black text-green-600 leading-tight">{currentTime.toLocaleTimeString([], {hour12: false})}</p>
                         </div>
+                        <button onClick={() => setAdminMode('login')} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-400 rounded-full text-xs font-bold hover:bg-indigo-50 hover:text-indigo-500 transition-all">
+                            <Icon name="shield" className="w-3 h-3" /> 관리자
+                        </button>
                     </header>
 
                     <main className="max-w-6xl mx-auto px-6">
@@ -218,7 +677,6 @@
                                     참여자 정보 입력
                                     <button onClick={() => setStep('landing')} className="text-xs font-bold text-gray-400 flex items-center gap-1"><Icon name="rotate-ccw" className="w-3 h-3" /> 다시 선택</button>
                                 </h2>
-                                
                                 <div className={`grid ${groupType === 'multi' ? 'grid-cols-2' : 'grid-cols-1'} gap-4 mb-8`}>
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-gray-400 ml-2">학급</label>
@@ -235,7 +693,6 @@
                                         </div>
                                     )}
                                 </div>
-
                                 <div className="space-y-3 mb-10">
                                     <label className="text-xs font-black text-gray-400 ml-2">{groupType === 'multi' ? '명단 입력' : '학생 정보 입력'}</label>
                                     {basicInfo.members.map((m, i) => (
@@ -252,7 +709,6 @@
                                         <button onClick={() => setBasicInfo({...basicInfo, members: [...basicInfo.members, {id:Date.now(), name:'', studentId:''}]})} className="w-full p-4 border-2 border-dashed border-green-200 text-green-600 font-bold rounded-2xl">+ 인원 추가</button>
                                     )}
                                 </div>
-
                                 <button onClick={() => setStep('activity')} disabled={basicInfo.members.some(m => !m.name || m.studentId.length < 4)} className="w-full p-5 bg-green-600 text-white rounded-[2rem] font-black text-xl shadow-lg disabled:opacity-30 transition-all">시작하기</button>
                             </div>
                         )}
@@ -265,7 +721,7 @@
                                         {id:2, label:'2차시: 사례/정책', icon:'file-text'},
                                         {id:3, label:'3-4차시: 해결방안', icon:'help-circle'},
                                         {id:5, label:'5-6차시: 결과물제작', icon:'pen-tool'},
-                                        {id:99, label:'최종 저장/제출', icon:'download'}
+                                        {id:99, label:'최종 저장/제출', icon:'send'}
                                     ].map(item => (
                                         <button key={item.id} onClick={() => setCurrentSession(item.id)} className={`flex items-center gap-3 p-5 rounded-[2rem] font-black transition-all shrink-0 lg:w-full ${currentSession === item.id ? 'bg-green-600 text-white shadow-xl scale-105' : 'bg-white text-gray-400 hover:bg-green-50'}`}>
                                             <Icon name={item.icon} /> <span className="text-sm">{item.label}</span>
@@ -274,6 +730,8 @@
                                 </aside>
 
                                 <div className="flex-1 bg-white rounded-[3.5rem] shadow-xl p-8 md:p-12 border-4 border-white relative min-h-[600px]">
+
+                                    {/* 1차시 */}
                                     {currentSession === 1 && (
                                         <div className="space-y-8 animate-fade">
                                             <div className="flex justify-between items-start">
@@ -329,8 +787,7 @@
                                             </div>
 
                                             <textarea placeholder="안성의 사회 문제 찾기 (현황 및 탐구 동기)" value={formData.session1.problem} onChange={e => handleInputChange('session1', 'problem', e.target.value)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-24 outline-none focus:border-green-400" />
-                                            
-                                            {/* 기록자 영역 - 안정적인 상태 관리를 위해 컴포넌트 내부에서 직접 선언 */}
+
                                             <div className="mt-8 pt-6 border-t border-green-100 flex flex-col md:flex-row gap-4 items-end bg-green-50/50 p-6 rounded-[2rem]">
                                                 <div className="flex-1 w-full space-y-1">
                                                     <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 학번</label>
@@ -344,6 +801,7 @@
                                         </div>
                                     )}
 
+                                    {/* 2차시 */}
                                     {currentSession === 2 && (
                                         <div className="space-y-8 animate-fade">
                                             <h2 className="text-3xl font-black text-green-900">2차시: 사례 및 정책 분석</h2>
@@ -375,6 +833,7 @@
                                         </div>
                                     )}
 
+                                    {/* 3-4차시 */}
                                     {currentSession === 3 && (
                                         <div className="space-y-8 animate-fade">
                                             <h2 className="text-3xl font-black text-green-900">3-4차시: 해결방안</h2>
@@ -399,6 +858,7 @@
                                         </div>
                                     )}
 
+                                    {/* 5-6차시 */}
                                     {currentSession === 5 && (
                                         <div className="space-y-8 animate-fade">
                                             <h2 className="text-3xl font-black text-green-900">5-6차시: 결과물 제작 계획</h2>
@@ -436,18 +896,53 @@
                                         </div>
                                     )}
 
+                                    {/* 최종 제출 */}
                                     {currentSession === 99 && (
                                         <div className="flex flex-col items-center justify-center py-20 animate-fade text-center space-y-10">
-                                            <div className="w-24 h-24 bg-green-600 text-white rounded-[2.5rem] flex items-center justify-center shadow-2xl">
-                                                <Icon name="check" className="w-12 h-12" />
-                                            </div>
-                                            <h2 className="text-4xl font-black text-green-900">활동 완료!</h2>
-                                            <button onClick={downloadHTML} className="w-full max-w-sm p-6 bg-green-600 text-white rounded-[2rem] font-black text-xl shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-3">
-                                                <Icon name="file-code" className="w-6 h-6" /> HTML 파일로 저장하기
-                                            </button>
+                                            {submitDone ? (
+                                                <>
+                                                    <div className="w-24 h-24 bg-green-600 text-white rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+                                                        <Icon name="check" className="w-12 h-12" />
+                                                    </div>
+                                                    <h2 className="text-4xl font-black text-green-900">제출 완료!</h2>
+                                                    <p className="text-gray-500 font-bold">데이터베이스에 저장되었습니다 🎉</p>
+                                                    <button onClick={downloadHTML} className="w-full max-w-sm p-5 bg-white border-2 border-green-200 text-green-700 rounded-[2rem] font-black text-lg shadow hover:bg-green-50 transition-all flex items-center justify-center gap-3">
+                                                        <Icon name="file-code" className="w-5 h-5" /> HTML 파일로도 저장하기
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="w-24 h-24 bg-green-100 text-green-600 rounded-[2.5rem] flex items-center justify-center shadow-xl">
+                                                        <Icon name="send" className="w-12 h-12" />
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <h2 className="text-4xl font-black text-green-900">제출 준비 완료!</h2>
+                                                        <p className="text-gray-500 font-bold">모든 내용을 확인한 후 제출해 주세요</p>
+                                                    </div>
+                                                    {/* 요약 미리보기 */}
+                                                    <div className="w-full max-w-md text-left bg-gray-50 rounded-[2rem] p-6 space-y-2 text-sm">
+                                                        <p><span className="font-black text-gray-400">반/모둠</span> <span className="font-bold text-gray-700 ml-2">{basicInfo.classNum}반 {groupType === 'multi' ? `${basicInfo.groupNum}모둠` : '개인'}</span></p>
+                                                        <p><span className="font-black text-gray-400">참여자</span> <span className="font-bold text-gray-700 ml-2">{basicInfo.members.map(m => m.name).join(', ')}</span></p>
+                                                        <p><span className="font-black text-gray-400">활동제목</span> <span className="font-bold text-gray-700 ml-2">{formData.session1.title || '(미입력)'}</span></p>
+                                                        <p><span className="font-black text-gray-400">SDG 목표</span> <span className="font-bold text-gray-700 ml-2">{formData.session1.sdg || '(미선택)'}</span></p>
+                                                    </div>
+                                                    <div className="flex flex-col gap-4 w-full max-w-sm">
+                                                        <button onClick={handleSubmit} disabled={isSubmitting} className="w-full p-6 bg-green-600 text-white rounded-[2rem] font-black text-xl shadow-xl hover:bg-green-700 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50">
+                                                            {isSubmitting
+                                                                ? <><svg className="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> 제출 중...</>
+                                                                : <><Icon name="send" className="w-6 h-6" /> DB에 제출하기</>
+                                                            }
+                                                        </button>
+                                                        <button onClick={downloadHTML} className="w-full p-4 bg-white border-2 border-gray-100 text-gray-500 rounded-[2rem] font-bold text-sm hover:border-green-300 transition-all flex items-center justify-center gap-2">
+                                                            <Icon name="file-code" className="w-4 h-4" /> HTML 파일로만 저장
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     )}
 
+                                    {/* 이전/다음 버튼 */}
                                     {currentSession !== 99 && (
                                         <div className="mt-12 pt-8 border-t border-gray-100 flex justify-between items-center">
                                             <button onClick={() => setCurrentSession(p => p === 5 ? 3 : p === 3 ? 2 : p - 1)} disabled={currentSession === 1} className="flex items-center gap-2 font-black text-gray-300 hover:text-green-600 disabled:opacity-0 transition-colors">
