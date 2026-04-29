@@ -1,1221 +1,1134 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>틈새연수 신청</title>
-<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Pretendard:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --ink: #1a1a18;
-    --paper: #f7f4ee;
-    --paper2: #efebe2;
-    --paper3: #e6e1d6;
-    --accent: #c0392b;
-    --accent2: #e8c547;
-    --muted: #7a7368;
-    --border: rgba(26,26,24,0.12);
-    --border2: rgba(26,26,24,0.22);
-    --success: #2d6a4f;
-    --warning: #9c6d00;
-    --danger: #c0392b;
-    --radius: 4px;
-    --radius-lg: 8px;
-    --shadow: 0 2px 16px rgba(26,26,24,0.10);
-    --shadow-lg: 0 8px 40px rgba(26,26,24,0.18);
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
-    background: var(--paper);
-    color: var(--ink);
-    min-height: 100vh;
-    position: relative;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231a1a18' fill-opacity='0.025'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 0 1.5rem 4rem; }
-
-  /* Header */
-  .site-header {
-    padding: 3rem 0 2rem;
-    border-bottom: 2px solid var(--ink);
-    margin-bottom: 2.5rem;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .site-kicker {
-    font-family: 'Nanum Myeongjo', serif;
-    font-size: 11px;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.5rem;
-  }
-  .site-title {
-    font-family: 'Nanum Myeongjo', serif;
-    font-size: clamp(28px, 5vw, 44px);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-  }
-  .site-title span { color: var(--accent); }
-
-  .btn-add {
-    font-family: 'Pretendard', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    padding: 11px 22px;
-    background: var(--ink);
-    color: var(--paper);
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-    white-space: nowrap;
-  }
-  .btn-add:hover { background: #333; }
-  .btn-add:active { transform: scale(0.97); }
-
-  /* Loading */
-  .loading-bar {
-    position: fixed; top: 0; left: 0; right: 0; height: 3px;
-    background: var(--accent);
-    z-index: 999;
-    animation: loadbar 1.2s ease infinite;
-    display: none;
-  }
-  .loading-bar.active { display: block; }
-  @keyframes loadbar { 0%{width:0;opacity:1} 70%{width:80%;opacity:1} 100%{width:100%;opacity:0} }
-
-  /* Course list */
-  .course-list { display: flex; flex-direction: column; gap: 1.25rem; }
-
-  .empty-state {
-    text-align: center;
-    padding: 5rem 2rem;
-    border: 1.5px dashed var(--border2);
-    border-radius: var(--radius-lg);
-    color: var(--muted);
-  }
-  .empty-state .empty-icon { font-size: 36px; margin-bottom: 1rem; opacity: 0.4; }
-  .empty-state p { font-size: 15px; }
-
-  /* Course Card */
-  .course-card {
-    background: #fff;
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    box-shadow: var(--shadow);
-    animation: fadeUp 0.35s ease both;
-  }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .card-top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1.25rem 1.5rem 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .card-title-row { flex: 1; }
-  .card-title {
-    font-family: 'Nanum Myeongjo', serif;
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 1.3;
-    margin-bottom: 6px;
-    cursor: pointer;
-    transition: color 0.15s;
-  }
-  .card-title:hover { color: var(--accent); }
-  .card-title-hint {
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    opacity: 0.7;
-  }
-  .card-meta {
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .card-meta-item { display: flex; align-items: center; gap: 4px; }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 99px;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .badge-open { background: #d4edda; color: #155724; }
-  .badge-open .badge-dot { background: #28a745; animation: pulse 1.5s infinite; }
-  .badge-wait { background: #fff3cd; color: #7a5800; }
-  .badge-wait .badge-dot { background: #f0ad00; }
-  .badge-full { background: #f8d7da; color: #721c24; }
-  .badge-full .badge-dot { background: #dc3545; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-  .card-body { padding: 1rem 1.5rem; }
-
-  .progress-wrap { margin-bottom: 6px; }
-  .progress-track {
-    height: 6px;
-    background: var(--paper2);
-    border-radius: 99px;
-    overflow: hidden;
-    margin-bottom: 5px;
-  }
-  .progress-fill {
-    height: 100%;
-    background: var(--ink);
-    border-radius: 99px;
-    transition: width 0.5s ease;
-  }
-  .progress-fill.full { background: var(--accent); }
-  .progress-label { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
-  .countdown-label { color: var(--warning); font-weight: 600; }
-
-  .card-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 0.85rem 1.5rem;
-    background: var(--paper);
-    border-top: 1px solid var(--border);
-  }
-
-  .btn {
-    font-family: 'Pretendard', sans-serif;
-    font-size: 13px; font-weight: 500;
-    padding: 9px 18px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border2);
-    background: #fff;
-    color: var(--ink);
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, transform 0.1s;
-  }
-  .btn:hover { background: var(--paper2); }
-  .btn:active { transform: scale(0.97); }
-  .btn-apply {
-    background: var(--ink);
-    color: var(--paper);
-    border-color: var(--ink);
-  }
-  .btn-apply:hover { background: #333; }
-  .btn-apply:disabled, .btn-apply.disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-  .btn-outline-accent { border-color: var(--accent); color: var(--accent); }
-  .btn-outline-accent:hover { background: #fdf0ee; }
-  .btn-delete { border-color: var(--danger); color: var(--danger); background: #fff; }
-  .btn-delete:hover { background: #fdf0ee; }
-  .delete-confirm-box {
-    margin-top: 1.25rem;
-    padding: 1rem 1.1rem;
-    border: 1.5px solid var(--danger);
-    border-radius: var(--radius-lg);
-    background: #fff8f7;
-  }
-  .delete-confirm-box p { font-size: 13px; color: #721c24; line-height: 1.6; margin-bottom: 0.85rem; }
-  .delete-confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
-  .btn-delete-confirm {
-    font-family: 'Pretendard', sans-serif;
-    font-size: 13px; font-weight: 600;
-    padding: 9px 18px;
-    border-radius: var(--radius);
-    border: none;
-    background: var(--danger);
-    color: #fff;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-  }
-  .btn-delete-confirm:hover { opacity: 0.85; }
-  .btn-delete-confirm:active { transform: scale(0.97); }
-
-  /* Instructor tabs */
-  .inst-tabs {
-    display: flex; gap: 0; margin-bottom: 1.25rem;
-    border-bottom: 2px solid var(--border2);
-  }
-  .inst-tab {
-    font-family: 'Pretendard', sans-serif;
-    font-size: 13px; font-weight: 500;
-    padding: 10px 18px;
-    border: none; background: none; cursor: pointer;
-    color: var(--muted);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: color 0.15s, border-color 0.15s;
-    border-radius: 0;
-  }
-  .inst-tab:hover { color: var(--ink); background: none; }
-  .inst-tab.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
-
-  /* Detail modal */
-  .detail-section { margin-bottom: 1.25rem; }
-  .detail-label {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
-  }
-  .detail-desc {
-    font-size: 15px; line-height: 1.8; color: var(--ink);
-    white-space: pre-wrap; word-break: break-word;
-    background: var(--paper); border-radius: var(--radius);
-    padding: 1rem 1.1rem; border: 1px solid var(--border);
-  }
-  .detail-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .detail-meta-card {
-    background: var(--paper); border-radius: var(--radius);
-    padding: 10px 14px; border: 1px solid var(--border);
-  }
-  .detail-meta-card .dm-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
-  .detail-meta-card .dm-value { font-size: 14px; font-weight: 600; color: var(--ink); }
-  .detail-progress-track {
-    height: 8px; background: var(--paper2); border-radius: 99px; overflow: hidden; margin-bottom: 5px;
-  }
-  .detail-progress-fill {
-    height: 100%; background: var(--ink); border-radius: 99px; transition: width 0.5s;
-  }
-  .detail-progress-fill.full { background: var(--accent); }
-
-  /* Modal */
-  .modal-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(26,26,24,0.55);
-    backdrop-filter: blur(3px);
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    opacity: 0;
-    animation: fadeIn 0.2s ease forwards;
-  }
-  @keyframes fadeIn { to { opacity: 1; } }
-
-  .modal {
-    background: #fff;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 500px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: var(--shadow-lg);
-    animation: scaleIn 0.22s ease both;
-  }
-  @keyframes scaleIn { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-  .modal-header {
-    padding: 1.5rem 1.5rem 1rem;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .modal-title {
-    font-family: 'Nanum Myeongjo', serif;
-    font-size: 20px;
-    font-weight: 700;
-  }
-  .modal-close {
-    width: 30px; height: 30px;
-    display: flex; align-items: center; justify-content: center;
-    border: none; background: none; cursor: pointer;
-    color: var(--muted); border-radius: var(--radius);
-    font-size: 18px;
-    transition: background 0.15s;
-  }
-  .modal-close:hover { background: var(--paper2); }
-
-  .modal-body { padding: 1.25rem 1.5rem; }
-  .modal-footer {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-
-  .field { margin-bottom: 1.1rem; }
-  .field:last-child { margin-bottom: 0; }
-  .field label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .field input, .field select, .field textarea {
-    width: 100%;
-    font-family: 'Pretendard', sans-serif;
-    font-size: 14px;
-    padding: 10px 12px;
-    border: 1px solid var(--border2);
-    border-radius: var(--radius);
-    background: var(--paper);
-    color: var(--ink);
-    outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
-  }
-  .field input:focus, .field select:focus, .field textarea:focus {
-    border-color: var(--ink);
-    box-shadow: 0 0 0 3px rgba(26,26,24,0.08);
-    background: #fff;
-  }
-  .field textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
-  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-  .req { color: var(--accent); }
-
-  .msg { font-size: 13px; padding: 10px 12px; border-radius: var(--radius); margin-top: 1rem; }
-  .msg-error { background: #fdf2f2; color: var(--danger); border: 1px solid #f5c6c6; }
-  .msg-success { background: #f0faf4; color: var(--success); border: 1px solid #b8e0c8; }
-
-  /* Registrant list */
-  .reg-count-bar {
-    background: var(--paper2);
-    border-radius: var(--radius);
-    padding: 12px 14px;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 14px;
-  }
-  .reg-count-bar strong { font-size: 22px; font-weight: 700; }
-
-  .reg-list { display: flex; flex-direction: column; gap: 6px; }
-  .reg-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    background: var(--paper);
-    border-radius: var(--radius);
-    font-size: 14px;
-    border: 1px solid var(--border);
-  }
-  .reg-num {
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    background: var(--ink);
-    color: var(--paper);
-    font-size: 11px;
-    font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .reg-name { flex: 1; font-weight: 500; }
-  .reg-time { font-size: 11px; color: var(--muted); }
-
-  .empty-reg {
-    text-align: center;
-    padding: 2rem;
-    color: var(--muted);
-    font-size: 14px;
-  }
-
-  @media (max-width: 540px) {
-    .field-row { grid-template-columns: 1fr; }
-    .site-header { flex-direction: column; align-items: flex-start; }
-    .card-top { flex-direction: column; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>안성여고 지속가능한 공동체 프로젝트</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- JSZip: ZIP 파일 생성용 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap');
+        body { font-family: 'Pretendard', sans-serif; background-color: #F8FCF8; color: #1f2937; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        .animate-fade { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 </head>
 <body>
+    <div id="root"></div>
 
-<div class="loading-bar" id="loadingBar"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
 
-<div class="wrap">
-  <header class="site-header">
-    <div class="site-header-left">
-      <div class="site-kicker">연수 관리 시스템</div>
-      <h1 class="site-title">틈새연수 <span>신청</span></h1>
-    </div>
-    <button class="btn-add" onclick="openAddModal()">＋ 강의 추가</button>
-  </header>
+        // =============================================
+        // Supabase 설정
+        // =============================================
+        // 아래 두 값을 본인의 Supabase 프로젝트 값으로 교체하세요.
+        // Supabase 대시보드 → Project Settings → API 에서 확인 가능
+        const SUPABASE_URL = 'https://hnhcgnrbpijnkaeomxsy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuaGNnbnJicGlqbmthZW9teHN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjcxMjYsImV4cCI6MjA5MjU0MzEyNn0.6NUUVudRw7osey9rxVHcrMCPId1aIK4XTd6vQ4rUpZ4';
 
-  <div class="course-list" id="courseList">
-    <div class="empty-state">
-      <div class="empty-icon">⏳</div>
-      <p>강의 목록을 불러오는 중...</p>
-    </div>
-  </div>
+        let supabase;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch(e) {
+            console.error('Supabase 초기화 오류:', e);
+        }
+
+        // =============================================
+        // 관리자 비밀번호 설정
+        // =============================================
+        // 원하는 비밀번호로 변경하세요
+        const ADMIN_PASSWORD = 'ansung2026';
+
+        // =============================================
+        // 아이콘 컴포넌트
+        // =============================================
+        const Icon = ({ name, className = "w-5 h-5" }) => {
+            useEffect(() => { lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} className={className}></i>;
+        };
+
+        // =============================================
+        // 토스트 알림 컴포넌트
+        // =============================================
+        const Toast = ({ message, type, onClose }) => {
+            useEffect(() => {
+                const t = setTimeout(onClose, 3500);
+                return () => clearTimeout(t);
+            }, []);
+            const colors = {
+                success: 'bg-green-600',
+                error: 'bg-red-500',
+                loading: 'bg-gray-700'
+            };
+            return (
+                <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-bold shadow-2xl animate-fade ${colors[type]}`}>
+                    {type === 'loading' && <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
+                    {type === 'success' && <Icon name="check-circle" />}
+                    {type === 'error' && <Icon name="x-circle" />}
+                    <span>{message}</span>
+                </div>
+            );
+        };
+
+        // =============================================
+        // 관리자 패널 컴포넌트
+        // =============================================
+        const AdminPanel = ({ onLogout }) => {
+            const { useState: useS, useEffect: useE } = React;
+            const [submissions, setSubmissions] = useS([]);
+            const [loading, setLoading] = useS(true);
+            const [filterClass, setFilterClass] = useS('전체');
+            const [sortBy, setSortBy] = useS('submitted_at');
+            const [downloading, setDownloading] = useS(false);
+            const [searchQuery, setSearchQuery] = useS('');
+            const [selectedIds, setSelectedIds] = useS([]);
+            const [deleteConfirm, setDeleteConfirm] = useS(null); // null | 'one' | 'selected' | 'all'
+            const [deleteTarget, setDeleteTarget] = useS(null); // single submission object
+            const [deleting, setDeleting] = useS(false);
+
+            useE(() => { fetchAll(); }, []);
+
+            const fetchAll = async () => {
+                setLoading(true);
+                try {
+                    if (!supabase) {
+                        console.error('Supabase가 초기화되지 않았습니다.');
+                        setLoading(false);
+                        return;
+                    }
+                    const { data, error } = await supabase
+                        .from('submissions')
+                        .select('*')
+                        .order('submitted_at', { ascending: false });
+                    if (error) {
+                        console.error('데이터 조회 오류:', error);
+                    } else {
+                        setSubmissions(data || []);
+                    }
+                } catch(e) {
+                    console.error('fetchAll 예외:', e);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const filtered = submissions.filter(s => {
+                const classOk = filterClass === '전체' || s.class_num === filterClass;
+                const q = searchQuery.toLowerCase();
+                const nameMatch = (s.members || []).some(m => m.name?.includes(q) || m.studentId?.includes(q));
+                const titleMatch = (s.s1_title || '').toLowerCase().includes(q);
+                return classOk && (q === '' || nameMatch || titleMatch);
+            }).sort((a, b) => {
+                if (sortBy === 'class') return a.class_num?.localeCompare(b.class_num) || 0;
+                if (sortBy === 'title') return (a.s1_title || '').localeCompare(b.s1_title || '');
+                return new Date(b.submitted_at) - new Date(a.submitted_at);
+            });
+
+            // 완성도 계산 (4개 차시 중 몇 개 작성했는지)
+            const getProgress = (s) => {
+                let count = 0;
+                if (s.s1_title) count++;
+                if (s.s2_cases) count++;
+                if (s.s3_solution) count++;
+                if (s.s5_plan) count++;
+                return count;
+            };
+
+            const progressColor = (n) => {
+                if (n === 4) return 'bg-green-500';
+                if (n >= 2) return 'bg-yellow-400';
+                return 'bg-red-400';
+            };
+
+            // 단일 HTML 보고서 생성
+            const buildHTML = (s) => {
+                const members = (s.members || []).map(m => `${m.studentId} ${m.name}`).join(', ');
+                const groupLabel = s.group_type === 'multi' ? `${s.group_num}모둠` : '개인';
+                return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>안성여고 프로젝트 결과보고서</title>
+<style>
+body{font-family:sans-serif;padding:40px;line-height:1.6;color:#333;max-width:800px;margin:0 auto}
+h1{color:#059669;border-bottom:3px solid #059669;padding-bottom:10px;text-align:center}
+h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px;font-size:1.2rem}
+.info-box{background:#f9fafb;padding:20px;border-radius:10px;margin-bottom:20px;border:1px solid #e5e7eb}
+.writer{font-size:.9em;color:#059669;font-weight:bold;text-align:right;background:#f0fdf4;padding:5px 10px;border-radius:5px;display:inline-block;float:right}
+.clear{clear:both}p{margin:8px 0}b{color:#111}
+</style></head><body>
+<h1>안성여고 지속가능한 공동체 프로젝트 결과물</h1>
+<div class="info-box">
+  <p><b>학급:</b> 3학년 ${s.class_num}반 ${groupLabel}</p>
+  <p><b>참여자:</b> ${members}</p>
+  <p><b>제출일시:</b> ${new Date(s.submitted_at).toLocaleString('ko-KR')}</p>
 </div>
+<h2>1차시: 주제 설정</h2>
+<p><b>진로분야:</b> ${s.s1_field||''} | <b>SDG 목표:</b> ${s.s1_sdg||''}</p>
+<p><b>활동제목:</b> ${s.s1_title||''}</p>
+<p><b>활동개요:</b> ${s.s1_summary||''}</p>
+<p><b>지역연계 요소:</b> ${s.s1_regional_link||''}</p>
+<p><b>융합 교과:</b> ${(s.s1_subjects||[]).filter(Boolean).join(', ')}</p>
+<p><b>교과 융합 이유:</b> ${s.s1_reason||''}</p>
+<p><b>안성의 사회 문제:</b> ${s.s1_problem||''}</p>
+<div class="writer">기록자: ${s.s1_writer_id||''} ${s.s1_writer_name||''}</div><div class="clear"></div>
+<h2>2차시: 사례 및 정책 분석</h2>
+<p><b>문제 사례/성공분야:</b> ${s.s2_cases||''}</p>
+<p><b>정책 조사 및 한계점:</b> ${s.s2_policies||''}</p>
+<p><b>관련 자료 링크:</b> ${(s.s2_links||[]).filter(Boolean).join(', ')}</p>
+<div class="writer">기록자: ${s.s2_writer_id||''} ${s.s2_writer_name||''}</div><div class="clear"></div>
+<h2>3-4차시: 해결방안</h2>
+<p><b>구체적 해결방안:</b> ${s.s3_solution||''}</p>
+<p><b>참고 자료 링크:</b> ${(s.s3_links||[]).filter(Boolean).join(', ')}</p>
+<div class="writer">기록자: ${s.s3_writer_id||''} ${s.s3_writer_name||''}</div><div class="clear"></div>
+<h2>5-6차시: 결과물 제작 계획</h2>
+<p><b>결과물 종류:</b> ${s.s5_plan||''}</p>
+<p><b>제작 도구:</b> ${s.s5_tool||''}</p>
+<p><b>상세 설명:</b> ${s.s5_description||''}</p>
+<p><b>역할 분담:</b> ${(s.s5_roles||[]).map(r=>`${r.name}(${r.role})`).join(', ')}</p>
+<div class="writer">기록자: ${s.s5_writer_id||''} ${s.s5_writer_name||''}</div><div class="clear"></div>
+</body></html>`;
+            };
 
-<!-- 강의 추가 모달 -->
-<div class="modal-backdrop" id="addModal" style="display:none" onclick="backdropClose(event,'addModal')">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">새 강의 추가</div>
-      <button class="modal-close" onclick="closeModal('addModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="field">
-        <label>강사 비밀번호 <span class="req">*</span></label>
-        <input type="password" id="f-pass" placeholder="강사만 아는 비밀번호">
-      </div>
-      <div class="field">
-        <label>강의 이름 <span class="req">*</span></label>
-        <input type="text" id="f-name" placeholder="강의 이름을 입력하세요">
-      </div>
-      <div class="field">
-        <label>강의 내용 <span class="req">*</span></label>
-        <textarea id="f-desc" placeholder="강의에 대한 설명을 입력하세요"></textarea>
-      </div>
-      <div class="field">
-        <label>수강자 수 제한 <span class="req">*</span></label>
-        <input type="number" id="f-limit" min="1" placeholder="예: 30">
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label>수강신청 시작 날짜 <span class="req">*</span></label>
-          <input type="date" id="f-openDate">
-        </div>
-        <div class="field">
-          <label>수강신청 시작 시간 <span class="req">*</span></label>
-          <select id="f-openTime"></select>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label>강의 날짜 <span class="req">*</span></label>
-          <input type="date" id="f-lectureDate">
-        </div>
-        <div class="field">
-          <label>강의 시작 시간 <span class="req">*</span></label>
-          <select id="f-lectureTime"></select>
-        </div>
-      </div>
-      <div id="addMsg"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('addModal')">취소</button>
-      <button class="btn btn-apply" onclick="saveCourse()">저장하기</button>
-    </div>
-  </div>
-</div>
+            // ZIP 다운로드 (HTML 묶음 + CSV)
+            const downloadAll = async () => {
+                if (filtered.length === 0) return;
+                setDownloading(true);
+                const zip = new JSZip();
+                const folder = zip.folder('안성여고_프로젝트_결과물');
 
-<!-- 수강신청 모달 -->
-<div class="modal-backdrop" id="applyModal" style="display:none" onclick="backdropClose(event,'applyModal')">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title" id="applyModalTitle">수강신청</div>
-      <button class="modal-close" onclick="closeModal('applyModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="field">
-        <label>이름 <span class="req">*</span></label>
-        <input type="text" id="a-name" placeholder="성명을 입력하세요" onkeydown="if(event.key==='Enter')submitApply()">
-      </div>
-      <div id="applyMsg"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('applyModal')">취소</button>
-      <button class="btn btn-apply" onclick="submitApply()">신청하기</button>
-    </div>
-  </div>
-</div>
+                // 개별 HTML 파일
+                filtered.forEach(s => {
+                    const members = (s.members || []);
+                    const nameStr = members.map(m => m.name).join('_') || 'unknown';
+                    const groupLabel = s.group_type === 'multi' ? `${s.group_num}모둠` : nameStr;
+                    const fileName = `3학년_${s.class_num}반_${groupLabel}_보고서.html`;
+                    folder.file(fileName, buildHTML(s));
+                });
 
-<!-- 강사 확인 모달 -->
-<div class="modal-backdrop" id="instModal" style="display:none" onclick="backdropClose(event,'instModal')">
-  <div class="modal" style="max-width:560px;">
-    <div class="modal-header">
-      <div class="modal-title" id="instModalTitle">강사 확인</div>
-      <button class="modal-close" onclick="closeModal('instModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="instPassSection">
-        <div class="field">
-          <label>강사 비밀번호</label>
-          <input type="password" id="i-pass" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')verifyInstructor()">
-        </div>
-        <div id="instMsg"></div>
-      </div>
-      <div id="instDashboard" style="display:none">
-        <div class="inst-tabs">
-          <button class="inst-tab active" onclick="switchTab('list')">수강신청자 목록</button>
-          <button class="inst-tab" onclick="switchTab('edit')">강의 설정 수정</button>
-        </div>
-        <div id="instListSection"></div>
-        <div id="instEditSection" style="display:none">
-          <div class="field"><label>강의 이름 <span class="req">*</span></label><input type="text" id="e-name"></div>
-          <div class="field"><label>강의 내용 <span class="req">*</span></label><textarea id="e-desc"></textarea></div>
-          <div class="field"><label>수강자 수 제한 <span class="req">*</span></label><input type="number" id="e-limit" min="1"></div>
-          <div class="field-row">
-            <div class="field">
-              <label>수강신청 시작 날짜 <span class="req">*</span></label>
-              <input type="date" id="e-openDate">
-            </div>
-            <div class="field">
-              <label>수강신청 시작 시간 <span class="req">*</span></label>
-              <select id="e-openTime"></select>
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field"><label>강의 날짜 <span class="req">*</span></label><input type="date" id="e-lectureDate"></div>
-            <div class="field"><label>강의 시작 시간 <span class="req">*</span></label><select id="e-lectureTime"></select></div>
-          </div>
-          <div id="editMsg"></div>
-          <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
-            <button class="btn btn-apply" onclick="saveEdit()">수정 저장</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer" id="instFooter">
-      <button class="btn" onclick="closeModal('instModal')">닫기</button>
-      <button class="btn btn-apply" id="instVerifyBtn" onclick="verifyInstructor()">확인</button>
-    </div>
-  </div>
-</div>
+                // CSV
+                const csvHeader = ['제출일시','반','모둠/개인','참여자','활동제목','SDG','진로분야','1차시완성','2차시완성','3차시완성','5차시완성'];
+                const csvRows = filtered.map(s => {
+                    const members = (s.members||[]).map(m=>`${m.studentId} ${m.name}`).join(' ');
+                    const groupLabel = s.group_type === 'multi' ? `${s.group_num}모둠` : '개인';
+                    return [
+                        new Date(s.submitted_at).toLocaleString('ko-KR'),
+                        `${s.class_num}반`,
+                        groupLabel,
+                        members,
+                        s.s1_title||'',
+                        s.s1_sdg||'',
+                        s.s1_field||'',
+                        s.s1_title ? 'O' : 'X',
+                        s.s2_cases ? 'O' : 'X',
+                        s.s3_solution ? 'O' : 'X',
+                        s.s5_plan ? 'O' : 'X',
+                    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+                });
+                const csvContent = '\uFEFF' + [csvHeader.join(','), ...csvRows].join('\n');
+                folder.file('전체_제출_목록.csv', csvContent);
 
-<!-- 강의 상세 모달 -->
-<div class="modal-backdrop" id="detailModal" style="display:none" onclick="backdropClose(event,'detailModal')">
-  <div class="modal" style="max-width:560px;">
-    <div class="modal-header">
-      <div class="modal-title" id="detailModalTitle"></div>
-      <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
-    </div>
-    <div class="modal-body" id="detailModalBody"></div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('detailModal')">닫기</button>
-    </div>
-  </div>
-</div>
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `안성여고_프로젝트_${new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','')}_.zip`;
+                a.click();
+                URL.revokeObjectURL(url);
+                setDownloading(false);
+            };
 
-<!-- 강의 삭제 모달 -->
-<div class="modal-backdrop" id="deleteModal" style="display:none" onclick="backdropClose(event,'deleteModal')">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title" id="deleteModalTitle">강의 삭제</div>
-      <button class="modal-close" onclick="closeModal('deleteModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="deletePassSection">
-        <div class="field">
-          <label>강사 비밀번호 <span class="req">*</span></label>
-          <input type="password" id="d-pass" placeholder="강사 비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')verifyDelete()">
-        </div>
-        <div id="deleteMsg"></div>
-      </div>
-      <div id="deleteConfirmSection" style="display:none">
-        <div class="delete-confirm-box">
-          <p>강의를 삭제하면 수강신청자 목록을 포함한 모든 데이터가 영구적으로 사라집니다.<br>정말 삭제하시겠습니까?</p>
-          <div class="delete-confirm-actions">
-            <button class="btn" onclick="closeModal('deleteModal')">취소</button>
-            <button class="btn-delete-confirm" onclick="confirmDelete()">네, 삭제합니다</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer" id="deleteFooter">
-      <button class="btn" onclick="closeModal('deleteModal')">취소</button>
-      <button class="btn btn-delete" id="deleteVerifyBtn" onclick="verifyDelete()">확인</button>
-    </div>
-  </div>
-</div>
+            // 단일 HTML 다운로드
+            const downloadOne = (s) => {
+                const members = (s.members || []);
+                const nameStr = members.map(m => m.name).join('_') || 'unknown';
+                const groupLabel = s.group_type === 'multi' ? `${s.group_num}모둠` : nameStr;
+                const fileName = `3학년_${s.class_num}반_${groupLabel}_보고서.html`;
+                const blob = new Blob([buildHTML(s)], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = fileName; a.click();
+                URL.revokeObjectURL(url);
+            };
 
-<!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>
-// ====================================================
-// Supabase 설정 - 환경변수에서 주입됨
-// ====================================================
-const SUPABASE_URL = window.ENV_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = window.ENV_SUPABASE_ANON_KEY || '';
+            // 단건 삭제
+            const deleteOne = async (s) => {
+                setDeleting(true);
+                try {
+                    const { error } = await supabase.from('submissions').delete().eq('id', s.id);
+                    if (error) { alert('삭제 오류: ' + error.message); }
+                    else { await fetchAll(); setSelectedIds(ids => ids.filter(id => id !== s.id)); }
+                } catch(e) { alert('삭제 중 오류가 발생했습니다.'); }
+                finally { setDeleting(false); setDeleteConfirm(null); setDeleteTarget(null); }
+            };
 
-let sbClient;
-try {
-  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-} catch(e) {
-  console.error('Supabase 초기화 실패:', e);
-}
+            // 선택 삭제
+            const deleteSelected = async () => {
+                if (selectedIds.length === 0) return;
+                setDeleting(true);
+                try {
+                    const { error } = await supabase.from('submissions').delete().in('id', selectedIds);
+                    if (error) { alert('삭제 오류: ' + error.message); }
+                    else { await fetchAll(); setSelectedIds([]); }
+                } catch(e) { alert('삭제 중 오류가 발생했습니다.'); }
+                finally { setDeleting(false); setDeleteConfirm(null); }
+            };
 
-// ====================================================
-// 상태
-// ====================================================
-let courses = [];
-let activeApplyId = null;
-let activeInstId = null;
-let activeDeleteId = null;
+            // 전체(필터된) 삭제
+            const deleteAllFiltered = async () => {
+                const ids = filtered.map(s => s.id);
+                if (ids.length === 0) return;
+                setDeleting(true);
+                try {
+                    const { error } = await supabase.from('submissions').delete().in('id', ids);
+                    if (error) { alert('삭제 오류: ' + error.message); }
+                    else { await fetchAll(); setSelectedIds([]); }
+                } catch(e) { alert('삭제 중 오류가 발생했습니다.'); }
+                finally { setDeleting(false); setDeleteConfirm(null); }
+            };
 
-// ====================================================
-// 유틸리티
-// ====================================================
-function hashPass(str) { return btoa(encodeURIComponent(str + '::salt::수강신청')); }
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function loading(on) {
-  document.getElementById('loadingBar').classList.toggle('active', on);
-}
-function showMsg(id, html, type) {
-  document.getElementById(id).innerHTML = `<div class="msg msg-${type}">${html}</div>`;
-}
+            const toggleSelect = (id) => setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
+            const toggleSelectAll = () => {
+                const filteredIds = filtered.map(s => s.id);
+                const allSelected = filteredIds.every(id => selectedIds.includes(id));
+                setSelectedIds(allSelected ? selectedIds.filter(id => !filteredIds.includes(id)) : [...new Set([...selectedIds, ...filteredIds])]);
+            };
 
-function genTimes() {
-  const t = [];
-  for (let h = 0; h < 24; h++)
-    for (let m = 0; m < 60; m += 30)
-      t.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
-  return t;
-}
-const ALL_TIMES = genTimes();
+            const statTotal = submissions.length;
+            const statDone = submissions.filter(s => getProgress(s) === 4).length;
+            const statByClass = [1,2,3,4,5,6].map(n => ({
+                cls: n,
+                count: submissions.filter(s => s.class_num === String(n)).length
+            }));
 
-function syncTime(selectId, current) {
-  const sel = document.getElementById(selectId);
-  if (!sel) return;
-  const cur = current || sel.value;
-  sel.innerHTML = ALL_TIMES.map(t => `<option value="${t}"${t===cur?'selected':''}>${t}</option>`).join('');
-}
+            return (
+                <div className="min-h-screen pb-20 bg-gray-50">
+                    {/* 삭제 확인 모달 */}
+                    {deleteConfirm && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                            <div className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-sm mx-4 text-center animate-fade">
+                                <div className="w-14 h-14 bg-red-100 rounded-[1rem] flex items-center justify-center mx-auto mb-4">
+                                    <Icon name="trash-2" className="w-7 h-7 text-red-500" />
+                                </div>
+                                <h3 className="text-xl font-black text-gray-900 mb-2">정말 삭제할까요?</h3>
+                                <p className="text-sm text-gray-500 font-bold mb-1">
+                                    {deleteConfirm === 'one' && deleteTarget &&
+                                        `"${deleteTarget.s1_title || '(제목 없음)'}" 1건을 삭제합니다.`}
+                                    {deleteConfirm === 'selected' &&
+                                        `선택된 ${selectedIds.length}건을 삭제합니다.`}
+                                    {deleteConfirm === 'all' &&
+                                        `현재 필터된 ${filtered.length}건을 모두 삭제합니다.`}
+                                </p>
+                                <p className="text-xs text-red-400 font-bold mb-6">이 작업은 되돌릴 수 없습니다.</p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => { setDeleteConfirm(null); setDeleteTarget(null); }}
+                                        className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                                    >취소</button>
+                                    <button
+                                        onClick={() => {
+                                            if (deleteConfirm === 'one') deleteOne(deleteTarget);
+                                            else if (deleteConfirm === 'selected') deleteSelected();
+                                            else if (deleteConfirm === 'all') deleteAllFiltered();
+                                        }}
+                                        disabled={deleting}
+                                        className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black hover:bg-red-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {deleting
+                                            ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> 삭제 중...</>
+                                            : <><Icon name="trash-2" className="w-4 h-4" /> 삭제</>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <header className="bg-white border-b border-gray-100 px-8 py-5 flex justify-between items-center sticky top-0 z-40 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-indigo-600 p-2 rounded-xl">
+                                <Icon name="shield" className="text-white w-5 h-5" />
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-black text-gray-900">관리자 대시보드</h1>
+                                <p className="text-xs text-gray-400">안성여고 지속가능한 공동체 프로젝트</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button onClick={fetchAll} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all">
+                                <Icon name="refresh-cw" className="w-4 h-4" /> 새로고침
+                            </button>
+                            <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-500 rounded-xl font-bold text-sm hover:bg-red-100 transition-all">
+                                <Icon name="log-out" className="w-4 h-4" /> 로그아웃
+                            </button>
+                        </div>
+                    </header>
 
-function initDateInputs() {
-  const today = new Date().toISOString().split('T')[0];
-  ['f-openDate','f-lectureDate'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.min = today; el.value = today; }
-  });
-  syncTime('f-openTime');
-  syncTime('f-lectureTime');
-}
+                    <div className="max-w-7xl mx-auto px-6 py-8">
 
-function parseDt(date, time) {
-  if (!date || !time) return null;
-  const t = time.slice(0, 5);
-  return new Date(`${date}T${t}:00`);
-}
-function fmtDt(dt) {
-  if (!dt) return '-';
-  return dt.toLocaleString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-}
-function fmtLectureDt(dateStr, timeStr) {
-  if (!dateStr) return '-';
-  const base = new Date(dateStr).toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' });
-  return timeStr ? `${base} ${timeStr}` : base;
-}
-function getUntil(dt) {
-  const d = dt - Date.now();
-  if (d <= 0) return null;
-  const h = Math.floor(d/3600000), m = Math.floor((d%3600000)/60000), s = Math.floor((d%60000)/1000);
-  if (h > 23) { const days = Math.floor(d/86400000); return `${days}일 후 오픈`; }
-  if (h > 0) return `${h}시간 ${m}분 후 오픈`;
-  if (m > 0) return `${m}분 ${s}초 후 오픈`;
-  return `${s}초 후 오픈`;
-}
+                        {/* 통계 카드 */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <p className="text-xs font-bold text-gray-400 mb-1">전체 제출</p>
+                                <p className="text-3xl font-black text-indigo-600">{statTotal}<span className="text-sm text-gray-400 ml-1">건</span></p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                <p className="text-xs font-bold text-gray-400 mb-1">전 차시 완성</p>
+                                <p className="text-3xl font-black text-green-600">{statDone}<span className="text-sm text-gray-400 ml-1">건</span></p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 col-span-2">
+                                <p className="text-xs font-bold text-gray-400 mb-2">반별 제출 현황</p>
+                                <div className="flex gap-2 flex-wrap">
+                                    {statByClass.map(({cls, count}) => (
+                                        <div key={cls} className="flex items-center gap-1">
+                                            <span className="text-xs text-gray-500 font-bold">{cls}반</span>
+                                            <span className={`text-xs font-black px-2 py-0.5 rounded-full ${count > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>{count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
 
-// ====================================================
-// Supabase API
-// ====================================================
-async function loadCourses() {
-  loading(true);
-  try {
-    const { data: coursesData, error: ce } = await sbClient
-      .from('courses')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (ce) throw ce;
+                        {/* 필터 + 다운로드 */}
+                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+                            <div className="flex gap-3 flex-wrap items-center w-full md:w-auto">
+                                <input
+                                    placeholder="이름, 학번, 제목 검색..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="px-4 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-400 w-48"
+                                />
+                                <select value={filterClass} onChange={e => setFilterClass(e.target.value)} className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none">
+                                    <option>전체</option>
+                                    {[1,2,3,4,5,6].map(n => <option key={n} value={String(n)}>{n}반</option>)}
+                                </select>
+                                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none">
+                                    <option value="submitted_at">최신순</option>
+                                    <option value="class">반 순</option>
+                                    <option value="title">제목순</option>
+                                </select>
+                                <span className="text-sm text-gray-400 font-bold">{filtered.length}건</span>
+                            </div>
+                            <div className="flex gap-2 flex-wrap justify-end">
+                                <button
+                                    onClick={downloadAll}
+                                    disabled={downloading || filtered.length === 0}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-black text-sm shadow hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-40 whitespace-nowrap"
+                                >
+                                    {downloading
+                                        ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> 생성 중...</>
+                                        : <><Icon name="download" className="w-4 h-4" /> 전체 ZIP</>
+                                    }
+                                </button>
+                            </div>
+                        </div>
 
-    const { data: registrantsData, error: re } = await sbClient
-      .from('registrants')
-      .select('*')
-      .order('applied_at', { ascending: true });
-    if (re) throw re;
+                        {/* 선택 삭제 툴바 */}
+                        {filtered.length > 0 && (
+                            <div className="bg-white rounded-2xl px-5 py-3 shadow-sm border border-gray-100 mb-3 flex items-center gap-4 flex-wrap">
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={filtered.length > 0 && filtered.every(s => selectedIds.includes(s.id))}
+                                        onChange={toggleSelectAll}
+                                        className="w-4 h-4 accent-indigo-600 cursor-pointer"
+                                    />
+                                    <span className="text-sm font-bold text-gray-600">전체 선택</span>
+                                </label>
+                                {selectedIds.length > 0 && (
+                                    <span className="text-sm font-black text-indigo-600">{selectedIds.length}개 선택됨</span>
+                                )}
+                                <div className="ml-auto flex gap-2">
+                                    {selectedIds.length > 0 && (
+                                        <button
+                                            onClick={() => setDeleteConfirm('selected')}
+                                            className="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-500 border border-red-200 rounded-xl text-sm font-black hover:bg-red-100 transition-all"
+                                        >
+                                            <Icon name="trash-2" className="w-4 h-4" /> 선택 삭제 ({selectedIds.length})
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setDeleteConfirm('all')}
+                                        disabled={filtered.length === 0}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-black hover:bg-red-600 transition-all disabled:opacity-40"
+                                    >
+                                        <Icon name="trash" className="w-4 h-4" /> 전체 삭제
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
-    courses = (coursesData || []).map(c => ({
-      ...c,
-      registrants: (registrantsData || []).filter(r => r.course_id === c.id)
-    }));
-  } catch(e) {
-    console.error('강의 로드 실패:', e);
-    courses = [];
-  }
-  loading(false);
-  renderCourses();
-}
+                        {/* 제출 목록 */}
+                        {loading ? (
+                            <div className="text-center py-20 text-gray-400 font-bold">불러오는 중...</div>
+                        ) : filtered.length === 0 ? (
+                            <div className="text-center py-20 text-gray-400 font-bold">제출된 데이터가 없습니다</div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filtered.map((s, i) => {
+                                    const prog = getProgress(s);
+                                    const members = (s.members || []).map(m => `${m.studentId} ${m.name}`).join(', ');
+                                    const groupLabel = s.group_type === 'multi' ? `${s.class_num}반 ${s.group_num}모둠` : `${s.class_num}반 개인`;
+                                    return (
+                                        <div key={s.id || i} className={`bg-white rounded-2xl p-5 shadow-sm border transition-all flex flex-col md:flex-row md:items-center gap-4 ${selectedIds.includes(s.id) ? 'border-red-300 bg-red-50/30' : 'border-gray-100'}`}>
+                                            {/* 체크박스 */}
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(s.id)}
+                                                onChange={() => toggleSelect(s.id)}
+                                                className="w-4 h-4 accent-indigo-600 cursor-pointer shrink-0 mt-1 md:mt-0"
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                    <span className="text-xs font-black px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">{groupLabel}</span>
+                                                    <span className="text-xs text-gray-400">{new Date(s.submitted_at).toLocaleString('ko-KR')}</span>
+                                                </div>
+                                                <p className="font-black text-gray-900 text-base truncate">{s.s1_title || '(제목 미입력)'}</p>
+                                                <p className="text-xs text-gray-500 mt-0.5 truncate">{members}</p>
+                                                {/* 차시별 진행도 */}
+                                                <div className="flex gap-1.5 mt-2">
+                                                    {[
+                                                        { label:'1차시', done: !!s.s1_title },
+                                                        { label:'2차시', done: !!s.s2_cases },
+                                                        { label:'3차시', done: !!s.s3_solution },
+                                                        { label:'5차시', done: !!s.s5_plan },
+                                                    ].map(({label, done}) => (
+                                                        <span key={label} className={`text-[10px] font-black px-2 py-0.5 rounded-full ${done ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                                                            {label} {done ? '✓' : '✗'}
+                                                        </span>
+                                                    ))}
+                                                    <div className="ml-1 flex items-center gap-1">
+                                                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                            <div className={`h-full rounded-full transition-all ${progressColor(prog)}`} style={{width: `${prog/4*100}%`}}></div>
+                                                        </div>
+                                                        <span className="text-[10px] text-gray-400 font-bold">{prog}/4</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 shrink-0">
+                                                <button
+                                                    onClick={() => downloadOne(s)}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all whitespace-nowrap"
+                                                >
+                                                    <Icon name="file-down" className="w-4 h-4" /> HTML 저장
+                                                </button>
+                                                <button
+                                                    onClick={() => { setDeleteTarget(s); setDeleteConfirm('one'); }}
+                                                    className="flex items-center gap-1.5 px-3 py-2 bg-red-50 border border-red-200 text-red-500 rounded-xl text-sm font-bold hover:bg-red-100 transition-all"
+                                                    title="삭제"
+                                                >
+                                                    <Icon name="trash-2" className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
 
-async function apiAddCourse(data) {
-  const { data: row, error } = await sbClient.from('courses').insert([data]).select().single();
-  if (error) throw error;
-  return row;
-}
+        // =============================================
+        // 관리자 로그인 화면
+        // =============================================
+        const AdminLogin = ({ onSuccess }) => {
+            const [pw, setPw] = React.useState('');
+            const [err, setErr] = React.useState(false);
+            const tryLogin = () => {
+                if (pw === ADMIN_PASSWORD) { onSuccess(); }
+                else { setErr(true); setTimeout(() => setErr(false), 1500); }
+            };
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                    <div className="bg-white rounded-[2.5rem] shadow-xl p-10 w-full max-w-sm text-center border border-gray-100">
+                        <div className="w-16 h-16 bg-indigo-100 rounded-[1.2rem] flex items-center justify-center mx-auto mb-6">
+                            <Icon name="shield" className="w-8 h-8 text-indigo-600" />
+                        </div>
+                        <h2 className="text-2xl font-black text-gray-900 mb-1">관리자 로그인</h2>
+                        <p className="text-sm text-gray-400 mb-8">비밀번호를 입력하세요</p>
+                        <input
+                            type="password"
+                            value={pw}
+                            onChange={e => setPw(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && tryLogin()}
+                            placeholder="비밀번호"
+                            className={`w-full p-4 border-2 rounded-2xl text-center font-bold outline-none transition-all mb-4 ${err ? 'border-red-400 bg-red-50' : 'border-gray-100 focus:border-indigo-400'}`}
+                        />
+                        {err && <p className="text-red-500 text-sm font-bold mb-3">비밀번호가 틀렸습니다</p>}
+                        <button onClick={tryLogin} className="w-full p-4 bg-indigo-600 text-white rounded-2xl font-black text-lg hover:bg-indigo-700 transition-all">
+                            입장하기
+                        </button>
+                    </div>
+                </div>
+            );
+        };
 
-async function apiUpdateCourse(id, data) {
-  const { error } = await sbClient.from('courses').update(data).eq('id', id);
-  if (error) throw error;
-}
+        // =============================================
+        // 메인 앱
+        // =============================================
+        const App = () => {
+            const [adminMode, setAdminMode] = useState('off'); // 'off' | 'login' | 'panel'
+            const [step, setStep] = useState('landing');
+            const [currentSession, setCurrentSession] = useState(1);
+            const [groupType, setGroupType] = useState(null);
+            const [showExamples, setShowExamples] = useState(false);
+            const [currentTime, setCurrentTime] = useState(new Date());
+            const [toast, setToast] = useState(null);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [submitDone, setSubmitDone] = useState(false);
 
-async function apiDeleteCourse(id) {
-  const { error } = await sbClient.from('courses').delete().eq('id', id);
-  if (error) throw error;
-}
+            const showToast = (message, type = 'success') => setToast({ message, type });
+            const hideToast = () => setToast(null);
 
-async function apiAddRegistrant(courseId, name) {
-  const { data: row, error } = await sbClient.from('registrants').insert([{
-    course_id: courseId,
-    name: name
-  }]).select().single();
-  if (error) throw error;
-  return row;
-}
+            const sdgGoals = [
+                "1. 빈곤층 감소와 사회안전망 강화", "2. 먹거리 안보와 지속가능한 농업", "3. 건강하고 행복한 삶 보장",
+                "4. 모두를 위한 양질의 교육", "5. 성평등 보장", "6. 건강하고 깨끗한 물 관리",
+                "7. 에너지의 친환경적 생산과 소비", "8. 좋은 일자리 확대와 경제성장", "9. 산업 혁신과 인프라 구축",
+                "10. 모든 종류의 불평등 해소", "11. 지속가능한 도시와 공동체", "12. 지속가능한 생산과 소비",
+                "13. 기후변화 대응", "14. 해양생태계 보전", "15. 육상생태계 보전",
+                "16. 평화, 정의, 강력한 제도", "17. 지구촌 협력 확대"
+            ];
 
-// ====================================================
-// 렌더링
-// ====================================================
-function renderCourses() {
-  const list = document.getElementById('courseList');
-  if (courses.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>등록된 강의가 없습니다.<br>강의를 추가해 보세요.</p></div>`;
-    return;
-  }
-  list.innerHTML = courses.map(c => {
-    const openDt = parseDt(c.open_date, c.open_time);
-    const now = Date.now();
-    const isOpen = openDt && now >= openDt;
-    const isFull = c.registrants.length >= c.max_limit;
-    const pct = Math.min(100, Math.round((c.registrants.length / c.max_limit) * 100));
-    const until = !isOpen && openDt ? getUntil(openDt) : null;
+            const exampleThemes = [
+                { field: '교육', title: '우리 동네 초록 수업 기획단', desc: '어린이 대상 지속 가능 수업 제작 및 실행' },
+                { field: '마케팅', title: '제로 웨이스트 브랜드 로컬 광고 기획', desc: '지역 친환경 매장 콘텐츠 제작' },
+                { field: '식품영양', title: '로컬 푸드 식단 챌린지', desc: '지역 식자재 식단 구성 및 요리 활동' },
+                { field: '회계', title: '친환경 소비 가계부 프로젝트', desc: '친환경 제품 가격 비교 및 소비계획' },
+                { field: '행정', title: '우리 동네 지속 가능 정책 브리핑', desc: '지역 정책 조사 및 카드뉴스 제작' },
+                { field: '사서', title: '지구를 위한 책장 큐레이션', desc: '환경 관련 도서 큐레이션 운영' },
+                { field: '미디어', title: '로컬 지속 가능 뉴스룸', desc: '지속 가능 뉴스 콘텐츠 제작' },
+                { field: '뷰티', title: '업사이클 뷰티 아이템 워크숍', desc: '화장품 공병 활용 뷰티 아이템 제작' },
+                { field: '법학', title: '생활 속 기후권 찾기', desc: '기후권 사례 수집 및 법률 소개 및 제작' }
+            ];
 
-    let badge, applyBtn;
-    if (isFull) {
-      badge = `<span class="badge badge-full"><span class="badge-dot"></span>마감</span>`;
-      applyBtn = `<button class="btn btn-apply disabled" disabled>신청 마감</button>`;
-    } else if (isOpen) {
-      badge = `<span class="badge badge-open"><span class="badge-dot"></span>신청 가능</span>`;
-      applyBtn = `<button class="btn btn-apply" onclick="openApplyModal(${c.id})">수강신청</button>`;
-    } else {
-      badge = `<span class="badge badge-wait"><span class="badge-dot"></span>대기중</span>`;
-      applyBtn = `<button class="btn btn-apply disabled" disabled>신청 대기</button>`;
-    }
+            const deadLines = {
+                1: new Date('2026-05-12T09:30:00'),
+                2: new Date('2026-05-12T10:30:00'),
+                3: new Date('2026-05-12T13:00:00'),
+                5: new Date('2026-05-12T16:00:00')
+            };
 
-    return `
-    <div class="course-card" id="card-${c.id}">
-      <div class="card-top">
-        <div class="card-title-row">
-          <div class="card-title" onclick="openDetailModal(${c.id})">${esc(c.name)}</div>
-          <div class="card-title-hint">
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
-            클릭하여 강의 상세보기
-          </div>
-          <div class="card-meta">
-            <span class="card-meta-item">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1zm0 1a6 6 0 1 0 0 12A6 6 0 0 0 8 2zm.5 3v3.25l2.5 1.5-.5.866L7.5 9V6h1z"/></svg>
-              신청 시작 ${fmtDt(openDt)}
-            </span>
-            <span class="card-meta-item">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>
-              강의일 ${fmtLectureDt(c.lecture_date, c.lecture_time)}
-            </span>
-            <span class="card-meta-item">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path fill-rule="evenodd" d="M5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216z"/><path d="M4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg>
-              정원 ${c.max_limit}명
-            </span>
-          </div>
-        </div>
-        ${badge}
-      </div>
-      <div class="card-body">
-        <div class="progress-wrap">
-          <div class="progress-track">
-            <div class="progress-fill ${isFull?'full':''}" style="width:${pct}%"></div>
-          </div>
-          <div class="progress-label">
-            <span>${c.registrants.length}/${c.max_limit}명 신청</span>
-            ${until ? `<span class="countdown-label" id="cd-${c.id}">${until}</span>` : '<span></span>'}
-          </div>
-        </div>
-      </div>
-      <div class="card-footer">
-        <button class="btn btn-outline-accent" onclick="openInstModal(${c.id})">강사 확인</button>
-        <button class="btn btn-delete" onclick="openDeleteModal(${c.id})">삭제</button>
-        ${applyBtn}
-      </div>
-    </div>`;
-  }).join('');
-}
+            const [basicInfo, setBasicInfo] = useState({
+                classNum: '1', groupNum: '1',
+                members: [{ id: 1, name: '', studentId: '' }]
+            });
 
-// ====================================================
-// 모달 제어
-// ====================================================
-function openModal(id) {
-  const el = document.getElementById(id);
-  el.style.display = 'flex';
-  el.style.opacity = '0';
-  requestAnimationFrame(() => { el.style.opacity = ''; el.style.animation = ''; });
-}
-function closeModal(id) {
-  document.getElementById(id).style.display = 'none';
-}
-function backdropClose(e, id) {
-  if (e.target === e.currentTarget) closeModal(id);
-}
+            const [formData, setFormData] = useState({
+                session1: { field: '', sdg: '', title: '', summary: '', regionalLink: '', subjects: ['', ''], reason: '', problem: '', writerId: '', writerName: '' },
+                session2: { cases: '', policies: '', links: ['', ''], writerId: '', writerName: '' },
+                session3_4: { solution: '', links: ['', ''], writerId: '', writerName: '' },
+                session5_6: { plan: '', tool: '', description: '', roles: [{name: '', role: ''}], writerId: '', writerName: '' }
+            });
 
-// ====================================================
-// 강의 추가
-// ====================================================
-function openAddModal() {
-  initDateInputs();
-  ['f-pass','f-name','f-desc','f-limit'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  document.getElementById('addMsg').innerHTML = '';
-  openModal('addModal');
-  setTimeout(() => document.getElementById('f-pass').focus(), 100);
-}
+            useEffect(() => {
+                const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+                return () => clearInterval(timer);
+            }, []);
 
-async function saveCourse() {
-  const pass = document.getElementById('f-pass').value.trim();
-  const name = document.getElementById('f-name').value.trim();
-  const desc = document.getElementById('f-desc').value.trim();
-  const limit = parseInt(document.getElementById('f-limit').value);
-  const openDate = document.getElementById('f-openDate').value;
-  const openTime = document.getElementById('f-openTime').value;
-  const lectureDate = document.getElementById('f-lectureDate').value;
-  const lectureTime = document.getElementById('f-lectureTime').value;
+            const isExpired = (n) => currentTime > (deadLines[n] || new Date('2099-01-01'));
 
-  if (!pass) return showMsg('addMsg','비밀번호를 입력해주세요.','error');
-  if (pass.length < 4) return showMsg('addMsg','비밀번호는 4자 이상이어야 합니다.','error');
-  if (!name) return showMsg('addMsg','강의 이름을 입력해주세요.','error');
-  if (!desc) return showMsg('addMsg','강의 내용을 입력해주세요.','error');
-  if (!limit || limit < 1) return showMsg('addMsg','수강자 수를 올바르게 입력해주세요.','error');
-  if (!openDate || !openTime) return showMsg('addMsg','수강신청 시작 날짜와 시간을 입력해주세요.','error');
-  if (!lectureDate || !lectureTime) return showMsg('addMsg','강의 날짜와 시간을 입력해주세요.','error');
+            const handleInputChange = useCallback((sKey, field, value, idx = null) => {
+                setFormData(prev => {
+                    const sessionData = { ...prev[sKey] };
+                    if (idx !== null) {
+                        const newList = [...sessionData[field]];
+                        newList[idx] = value;
+                        sessionData[field] = newList;
+                    } else {
+                        sessionData[field] = value;
+                    }
+                    return { ...prev, [sKey]: sessionData };
+                });
+            }, []);
 
-  loading(true);
-  try {
-    const row = await apiAddCourse({
-      name, description: desc, max_limit: limit,
-      open_date: openDate, open_time: openTime,
-      lecture_date: lectureDate, lecture_time: lectureTime,
-      pass_hash: hashPass(pass)
-    });
-    courses.unshift({ ...row, registrants: [] });
-    closeModal('addModal');
-    renderCourses();
-  } catch(e) {
-    showMsg('addMsg', '저장 중 오류가 발생했습니다: ' + e.message, 'error');
-  }
-  loading(false);
-}
+            // =============================================
+            // Supabase 제출 함수
+            // =============================================
+            const handleSubmit = async () => {
+                if (!supabase) {
+                    showToast('DB 연결 오류: Supabase가 초기화되지 않았습니다. URL/KEY를 확인해주세요.', 'error');
+                    return;
+                }
+                setIsSubmitting(true);
+                showToast('제출 중...', 'loading');
 
-// ====================================================
-// 수강신청
-// ====================================================
-function openApplyModal(id) {
-  const c = courses.find(x => x.id === id);
-  if (!c) return;
-  activeApplyId = id;
-  document.getElementById('applyModalTitle').textContent = c.name + ' — 수강신청';
-  document.getElementById('a-name').value = '';
-  document.getElementById('applyMsg').innerHTML = '';
-  openModal('applyModal');
-  setTimeout(() => document.getElementById('a-name').focus(), 100);
-}
+                const payload = {
+                    group_type: groupType,
+                    class_num: basicInfo.classNum,
+                    group_num: groupType === 'multi' ? basicInfo.groupNum : null,
+                    members: basicInfo.members,
+                    // 1차시
+                    s1_field: formData.session1.field,
+                    s1_sdg: formData.session1.sdg,
+                    s1_title: formData.session1.title,
+                    s1_summary: formData.session1.summary,
+                    s1_regional_link: formData.session1.regionalLink,
+                    s1_subjects: formData.session1.subjects,
+                    s1_reason: formData.session1.reason,
+                    s1_problem: formData.session1.problem,
+                    s1_writer_id: formData.session1.writerId,
+                    s1_writer_name: formData.session1.writerName,
+                    // 2차시
+                    s2_cases: formData.session2.cases,
+                    s2_policies: formData.session2.policies,
+                    s2_links: formData.session2.links,
+                    s2_writer_id: formData.session2.writerId,
+                    s2_writer_name: formData.session2.writerName,
+                    // 3-4차시
+                    s3_solution: formData.session3_4.solution,
+                    s3_links: formData.session3_4.links,
+                    s3_writer_id: formData.session3_4.writerId,
+                    s3_writer_name: formData.session3_4.writerName,
+                    // 5-6차시
+                    s5_plan: formData.session5_6.plan,
+                    s5_tool: formData.session5_6.tool,
+                    s5_description: formData.session5_6.description,
+                    s5_roles: formData.session5_6.roles,
+                    s5_writer_id: formData.session5_6.writerId,
+                    s5_writer_name: formData.session5_6.writerName,
+                    // 제출 시각
+                    submitted_at: new Date().toISOString()
+                };
 
-async function submitApply() {
-  const c = courses.find(x => x.id === activeApplyId);
-  if (!c) return;
-  const name = document.getElementById('a-name').value.trim();
-  if (!name) return showMsg('applyMsg','이름을 입력해주세요.','error');
-  if (c.registrants.length >= c.max_limit) return showMsg('applyMsg','정원이 마감되었습니다.','error');
-  if (c.registrants.find(r => r.name === name)) return showMsg('applyMsg','이미 신청하셨습니다.','error');
+                try {
+                    const { error } = await supabase.from('submissions').insert([payload]);
+                    setIsSubmitting(false);
 
-  loading(true);
-  try {
-    const row = await apiAddRegistrant(c.id, name);
-    c.registrants.push(row);
-    showMsg('applyMsg', `${esc(name)}님, 수강신청이 완료되었습니다! 🎉`, 'success');
-    setTimeout(() => { closeModal('applyModal'); renderCourses(); }, 1200);
-  } catch(e) {
-    showMsg('applyMsg', '신청 중 오류가 발생했습니다: ' + e.message, 'error');
-  }
-  loading(false);
-}
+                    if (error) {
+                        console.error('Supabase 오류:', error);
+                        showToast('제출 실패: ' + (error.message || JSON.stringify(error)), 'error');
+                    } else {
+                        hideToast();
+                        setSubmitDone(true);
+                        showToast('제출 완료! 수고하셨습니다 🎉', 'success');
+                    }
+                } catch (e) {
+                    console.error('제출 중 예외 발생:', e);
+                    setIsSubmitting(false);
+                    showToast('제출 중 오류 발생: ' + (e.message || '알 수 없는 오류'), 'error');
+                }
+            };
 
-// ====================================================
-// 강사 확인
-// ====================================================
-function openInstModal(id) {
-  const c = courses.find(x => x.id === id);
-  if (!c) return;
-  activeInstId = id;
-  document.getElementById('instModalTitle').textContent = c.name + ' — 강사 확인';
-  document.getElementById('i-pass').value = '';
-  document.getElementById('instMsg').innerHTML = '';
-  document.getElementById('instPassSection').style.display = '';
-  document.getElementById('instDashboard').style.display = 'none';
-  document.getElementById('instListSection').innerHTML = '';
-  document.getElementById('instEditSection').style.display = 'none';
-  document.getElementById('instFooter').style.display = '';
-  document.getElementById('instVerifyBtn').style.display = '';
-  document.querySelectorAll('.inst-tab').forEach((t,i) => t.classList.toggle('active', i===0));
-  openModal('instModal');
-  setTimeout(() => document.getElementById('i-pass').focus(), 100);
-}
+            // HTML 다운로드 (기존 기능 유지)
+            const downloadHTML = () => {
+                const info = basicInfo;
+                const s1 = formData.session1;
+                const s2 = formData.session2;
+                const s3 = formData.session3_4;
+                const s5 = formData.session5_6;
 
-function verifyInstructor() {
-  const c = courses.find(x => x.id === activeInstId);
-  if (!c) return;
-  const pass = document.getElementById('i-pass').value;
-  if (hashPass(pass) !== c.pass_hash) {
-    return showMsg('instMsg','비밀번호가 올바르지 않습니다.','error');
-  }
-  document.getElementById('instPassSection').style.display = 'none';
-  document.getElementById('instFooter').style.display = 'none';
-  document.getElementById('instDashboard').style.display = '';
-  renderInstList(c);
-  prefillEdit(c);
-}
+                const content = `
+                <!DOCTYPE html>
+                <html lang="ko">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>안성여고 프로젝트 결과보고서</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; }
+                        h1 { color: #059669; border-bottom: 3px solid #059669; padding-bottom: 10px; text-align: center; }
+                        h2 { background: #f0fdf4; padding: 10px; border-left: 5px solid #059669; margin-top: 30px; font-size: 1.2rem; }
+                        .info-box { background: #f9fafb; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e5e7eb; }
+                        .writer { font-size: 0.9em; color: #059669; font-weight: bold; text-align: right; margin-top: 10px; background: #f0fdf4; padding: 5px 10px; border-radius: 5px; display: inline-block; float: right; }
+                        .clear { clear: both; }
+                        p { margin: 8px 0; }
+                        b { color: #111; }
+                    </style>
+                </head>
+                <body>
+                    <h1>안성여고 지속가능한 공동체 프로젝트 결과물</h1>
+                    <div class="info-box">
+                        <p><b>학급:</b> 3학년 ${info.classNum}반 ${groupType === 'multi' ? `${info.groupNum}모둠` : '개별활동'}</p>
+                        <p><b>참여자:</b> ${info.members.map(m => `${m.studentId} ${m.name}`).join(', ')}</p>
+                    </div>
+                    <h2>1차시: 주제별 문제의식 공유</h2>
+                    <p><b>진로분야:</b> ${s1.field} | <b>SDG 목표:</b> ${s1.sdg}</p>
+                    <p><b>활동제목:</b> ${s1.title}</p>
+                    <p><b>활동개요:</b> ${s1.summary}</p>
+                    <p><b>지역연계 요소:</b> ${s1.regionalLink}</p>
+                    <p><b>융합 교과:</b> ${s1.subjects.filter(s => s).join(', ')}</p>
+                    <p><b>교과 융합 이유:</b> ${s1.reason}</p>
+                    <p><b>안성의 사회 문제:</b> ${s1.problem}</p>
+                    <div class="writer">기록자: ${s1.writerId} ${s1.writerName}</div>
+                    <div class="clear"></div>
+                    <h2>2차시: 사례 및 정책 분석</h2>
+                    <p><b>안성의 문제 사례/성공분야:</b> ${s2.cases}</p>
+                    <p><b>정책 조사 및 한계점 분석:</b> ${s2.policies}</p>
+                    <p><b>관련 자료 링크:</b> ${s2.links.filter(l => l).join(', ')}</p>
+                    <div class="writer">기록자: ${s2.writerId} ${s2.writerName}</div>
+                    <div class="clear"></div>
+                    <h2>3-4차시: 우리 모둠 해결방안</h2>
+                    <p><b>구체적 해결방안:</b> ${s3.solution}</p>
+                    <p><b>참고 자료 링크:</b> ${s3.links.filter(l => l).join(', ')}</p>
+                    <div class="writer">기록자: ${s3.writerId} ${s3.writerName}</div>
+                    <div class="clear"></div>
+                    <h2>5-6차시: 결과물 제작 계획</h2>
+                    <p><b>결과물 종류:</b> ${s5.plan}</p>
+                    <p><b>제작 도구:</b> ${s5.tool}</p>
+                    <p><b>상세 설명:</b> ${s5.description}</p>
+                    <p><b>역할 분담:</b> ${s5.roles.map(r => `${r.name}(${r.role})`).join(', ')}</p>
+                    <div class="writer">기록자: ${s5.writerId} ${s5.writerName}</div>
+                    <div class="clear"></div>
+                </body>
+                </html>`;
 
-function switchTab(tab) {
-  document.querySelectorAll('.inst-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='list')||(i===1&&tab==='edit')));
-  document.getElementById('instListSection').style.display = tab==='list' ? '' : 'none';
-  document.getElementById('instEditSection').style.display = tab==='edit' ? '' : 'none';
-}
+                const blob = new Blob([content], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const fileName = groupType === 'multi' 
+                    ? `3학년_${info.classNum}반_${info.groupNum}모둠_활동보고서.html` 
+                    : `3학년_${info.classNum}반_${info.members[0].studentId}_${info.members[0].name}_활동보고서.html`;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
 
-function renderInstList(c) {
-  const sec = document.getElementById('instListSection');
-  let html = `<div class="reg-count-bar"><span>총 수강신청자</span><div><strong>${c.registrants.length}</strong> / ${c.max_limit}명</div></div>`;
-  if (c.registrants.length === 0) {
-    html += `<div class="empty-reg">아직 신청자가 없습니다.</div>`;
-  } else {
-    html += `<div class="reg-list">` + c.registrants.map((r,i) => `
-      <div class="reg-item">
-        <span class="reg-num">${i+1}</span>
-        <span class="reg-name">${esc(r.name)}</span>
-        <span class="reg-time">${r.applied_at ? new Date(r.applied_at).toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''}</span>
-      </div>`).join('') + `</div>`;
-  }
-  sec.innerHTML = html;
-}
+            if (adminMode === 'login') return <AdminLogin onSuccess={() => setAdminMode('panel')} />;
+            if (adminMode === 'panel') return <AdminPanel onLogout={() => setAdminMode('off')} />;
 
-function prefillEdit(c) {
-  document.getElementById('e-name').value = c.name;
-  document.getElementById('e-desc').value = c.description;
-  document.getElementById('e-limit').value = c.max_limit;
-  document.getElementById('e-openDate').value = c.open_date;
-  syncTime('e-openTime', c.open_time ? c.open_time.slice(0,5) : '09:00');
-  document.getElementById('e-lectureDate').value = c.lecture_date;
-  syncTime('e-lectureTime', c.lecture_time ? c.lecture_time.slice(0,5) : '09:00');
-  document.getElementById('editMsg').innerHTML = '';
-}
+            return (
+                <div className="min-h-screen pb-20">
+                    {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
-async function saveEdit() {
-  const c = courses.find(x => x.id === activeInstId);
-  if (!c) return;
-  const name = document.getElementById('e-name').value.trim();
-  const desc = document.getElementById('e-desc').value.trim();
-  const limit = parseInt(document.getElementById('e-limit').value);
-  const openDate = document.getElementById('e-openDate').value;
-  const openTime = document.getElementById('e-openTime').value;
-  const lectureDate = document.getElementById('e-lectureDate').value;
-  const lectureTime = document.getElementById('e-lectureTime').value;
+                    <header className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div onClick={() => step !== 'landing' && setStep('landing')} className="cursor-pointer group text-center md:text-left">
+                            <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
+                                <div className="bg-green-600 p-2 rounded-2xl shadow-lg group-hover:rotate-6 transition-transform">
+                                    <Icon name="layout" className="text-white w-6 h-6" />
+                                </div>
+                                <h1 className="text-3xl font-black text-green-900 tracking-tight">안성여고 프로젝트</h1>
+                            </div>
+                            <p className="text-green-700 font-bold ml-1 tracking-tight">지속가능한 안성시 공동체 만들기 ✨</p>
+                        </div>
+                        <div className="bg-white px-6 py-3 rounded-full shadow-sm border border-green-50 text-center min-w-[140px]">
+                            <p className="text-[10px] font-bold text-gray-400 leading-none uppercase">Current Time</p>
+                            <p className="text-xl font-black text-green-600 leading-tight">{currentTime.toLocaleTimeString([], {hour12: false})}</p>
+                        </div>
+                        <button onClick={() => setAdminMode('login')} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-400 rounded-full text-xs font-bold hover:bg-indigo-50 hover:text-indigo-500 transition-all">
+                            <Icon name="shield" className="w-3 h-3" /> 관리자
+                        </button>
+                    </header>
 
-  if (!name) return showMsg('editMsg','강의 이름을 입력해주세요.','error');
-  if (!desc) return showMsg('editMsg','강의 내용을 입력해주세요.','error');
-  if (!limit || limit < 1) return showMsg('editMsg','수강자 수를 올바르게 입력해주세요.','error');
-  if (limit < c.registrants.length) return showMsg('editMsg',`이미 ${c.registrants.length}명이 신청했습니다. 정원은 ${c.registrants.length}명 이상이어야 합니다.`,'error');
-  if (!openDate || !openTime) return showMsg('editMsg','수강신청 시작 날짜와 시간을 입력해주세요.','error');
-  if (!lectureDate || !lectureTime) return showMsg('editMsg','강의 날짜와 시간을 입력해주세요.','error');
+                    <main className="max-w-6xl mx-auto px-6">
+                        {step === 'landing' && (
+                            <div className="bg-white rounded-[3.5rem] shadow-xl p-12 text-center animate-fade border-4 border-white">
+                                <div className="w-20 h-20 bg-green-100 rounded-[1.8rem] flex items-center justify-center mx-auto mb-8">
+                                    <Icon name="users" className="w-10 h-10 text-green-600" />
+                                </div>
+                                <h2 className="text-3xl font-black text-gray-900 mb-10">참여 형태를 선택해 주세요</h2>
+                                <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+                                    <button onClick={() => {setGroupType('single'); setStep('config'); setBasicInfo(p => ({...p, members: [{id:1, name:'', studentId:''}]}));}} className="group p-10 bg-white border-4 border-gray-50 rounded-[3rem] hover:border-green-400 hover:bg-green-50/50 transition-all shadow-sm">
+                                        <Icon name="user" className="w-12 h-12 mx-auto text-green-400 group-hover:scale-110 transition-transform" />
+                                        <h3 className="text-2xl font-black mt-6 text-green-900">1인 활동</h3>
+                                    </button>
+                                    <button onClick={() => {setGroupType('multi'); setStep('config');}} className="group p-10 bg-white border-4 border-gray-50 rounded-[3rem] hover:border-green-400 hover:bg-green-50/50 transition-all shadow-sm">
+                                        <Icon name="users" className="w-12 h-12 mx-auto text-green-400 group-hover:scale-110 transition-transform" />
+                                        <h3 className="text-2xl font-black mt-6 text-green-900">모둠 활동</h3>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
-  loading(true);
-  try {
-    await apiUpdateCourse(c.id, {
-      name, description: desc, max_limit: limit,
-      open_date: openDate, open_time: openTime,
-      lecture_date: lectureDate, lecture_time: lectureTime
-    });
-    Object.assign(c, { name, description: desc, max_limit: limit, open_date: openDate, open_time: openTime, lecture_date: lectureDate, lecture_time: lectureTime });
-    showMsg('editMsg','수정이 완료되었습니다.','success');
-    document.getElementById('instModalTitle').textContent = c.name + ' — 강사 확인';
-    renderCourses();
-  } catch(e) {
-    showMsg('editMsg', '수정 중 오류가 발생했습니다: ' + e.message, 'error');
-  }
-  loading(false);
-}
+                        {step === 'config' && (
+                            <div className="bg-white rounded-[3rem] shadow-xl p-10 animate-fade max-w-3xl mx-auto border-4 border-white">
+                                <h2 className="text-2xl font-black text-green-900 mb-8 flex justify-between items-center">
+                                    참여자 정보 입력
+                                    <button onClick={() => setStep('landing')} className="text-xs font-bold text-gray-400 flex items-center gap-1"><Icon name="rotate-ccw" className="w-3 h-3" /> 다시 선택</button>
+                                </h2>
+                                <div className={`grid ${groupType === 'multi' ? 'grid-cols-2' : 'grid-cols-1'} gap-4 mb-8`}>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-gray-400 ml-2">학급</label>
+                                        <select value={basicInfo.classNum} onChange={e => setBasicInfo({...basicInfo, classNum: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none">
+                                            {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}반</option>)}
+                                        </select>
+                                    </div>
+                                    {groupType === 'multi' && (
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-gray-400 ml-2">모둠 번호</label>
+                                            <select value={basicInfo.groupNum} onChange={e => setBasicInfo({...basicInfo, groupNum: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none">
+                                                {Array.from({length:15}, (_,i)=>i+1).map(n => <option key={n} value={n}>{n}모둠</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="space-y-3 mb-10">
+                                    <label className="text-xs font-black text-gray-400 ml-2">{groupType === 'multi' ? '명단 입력' : '학생 정보 입력'}</label>
+                                    {basicInfo.members.map((m, i) => (
+                                        <div key={i} className="flex gap-3 animate-fade">
+                                            <input placeholder="학번(4자리)" value={m.studentId} onChange={e => {
+                                                const n = [...basicInfo.members]; n[i].studentId = e.target.value; setBasicInfo({...basicInfo, members: n});
+                                            }} className="w-1/3 p-4 border rounded-2xl outline-none focus:border-green-400" maxLength={4} />
+                                            <input placeholder="이름" value={m.name} onChange={e => {
+                                                const n = [...basicInfo.members]; n[i].name = e.target.value; setBasicInfo({...basicInfo, members: n});
+                                            }} className="flex-1 p-4 border rounded-2xl outline-none focus:border-green-400" />
+                                        </div>
+                                    ))}
+                                    {groupType === 'multi' && basicInfo.members.length < 5 && (
+                                        <button onClick={() => setBasicInfo({...basicInfo, members: [...basicInfo.members, {id:Date.now(), name:'', studentId:''}]})} className="w-full p-4 border-2 border-dashed border-green-200 text-green-600 font-bold rounded-2xl">+ 인원 추가</button>
+                                    )}
+                                </div>
+                                <button onClick={() => setStep('activity')} disabled={basicInfo.members.some(m => !m.name || m.studentId.length < 4)} className="w-full p-5 bg-green-600 text-white rounded-[2rem] font-black text-xl shadow-lg disabled:opacity-30 transition-all">시작하기</button>
+                            </div>
+                        )}
 
-// ====================================================
-// 강의 상세
-// ====================================================
-function openDetailModal(id) {
-  const c = courses.find(x => x.id === id);
-  if (!c) return;
-  const openDt = parseDt(c.open_date, c.open_time);
-  const now = Date.now();
-  const isOpen = openDt && now >= openDt;
-  const isFull = c.registrants.length >= c.max_limit;
-  const pct = Math.min(100, Math.round((c.registrants.length / c.max_limit) * 100));
-  let badgeHtml;
-  if (isFull) badgeHtml = `<span class="badge badge-full"><span class="badge-dot"></span>마감</span>`;
-  else if (isOpen) badgeHtml = `<span class="badge badge-open"><span class="badge-dot"></span>신청 가능</span>`;
-  else badgeHtml = `<span class="badge badge-wait"><span class="badge-dot"></span>대기중</span>`;
+                        {step === 'activity' && (
+                            <div className="flex flex-col lg:flex-row gap-8 animate-fade">
+                                <aside className="lg:w-64 flex flex-row lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-4 lg:pb-0 scrollbar-hide">
+                                    {[
+                                        {id:1, label:'1차시: 주제 설정', icon:'layout'},
+                                        {id:2, label:'2차시: 사례/정책', icon:'file-text'},
+                                        {id:3, label:'3-4차시: 해결방안', icon:'help-circle'},
+                                        {id:5, label:'5-6차시: 결과물제작', icon:'pen-tool'},
+                                        {id:99, label:'최종 저장/제출', icon:'send'}
+                                    ].map(item => (
+                                        <button key={item.id} onClick={() => setCurrentSession(item.id)} className={`flex items-center gap-3 p-5 rounded-[2rem] font-black transition-all shrink-0 lg:w-full ${currentSession === item.id ? 'bg-green-600 text-white shadow-xl scale-105' : 'bg-white text-gray-400 hover:bg-green-50'}`}>
+                                            <Icon name={item.icon} /> <span className="text-sm">{item.label}</span>
+                                        </button>
+                                    ))}
+                                </aside>
 
-  document.getElementById('detailModalTitle').innerHTML = `${esc(c.name)}&nbsp;&nbsp;${badgeHtml}`;
-  document.getElementById('detailModalBody').innerHTML = `
-    <div class="detail-section">
-      <div class="detail-label">강의 설명</div>
-      <div class="detail-desc">${esc(c.description)}</div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-label">강의 정보</div>
-      <div class="detail-meta-grid">
-        <div class="detail-meta-card">
-          <div class="dm-label">강의 날짜</div>
-          <div class="dm-value" style="font-size:13px;font-weight:500;">${fmtLectureDt(c.lecture_date, c.lecture_time ? c.lecture_time.slice(0,5) : '')}</div>
-        </div>
-        <div class="detail-meta-card">
-          <div class="dm-label">수강신청 시작</div>
-          <div class="dm-value" style="font-size:12px;font-weight:500;">${fmtDt(openDt)}</div>
-        </div>
-        <div class="detail-meta-card">
-          <div class="dm-label">총 정원</div>
-          <div class="dm-value">${c.max_limit}명</div>
-        </div>
-        <div class="detail-meta-card">
-          <div class="dm-label">현재 신청</div>
-          <div class="dm-value">${c.registrants.length}명</div>
-        </div>
-      </div>
-    </div>
-    <div class="detail-section" style="margin-bottom:0">
-      <div class="detail-label">신청 현황</div>
-      <div class="detail-progress-track">
-        <div class="detail-progress-fill ${isFull?'full':''}" style="width:${pct}%"></div>
-      </div>
-      <div style="font-size:12px;color:var(--muted);display:flex;justify-content:space-between;">
-        <span>${c.registrants.length} / ${c.max_limit}명</span>
-        <span>${pct}% 충원</span>
-      </div>
-    </div>
-  `;
-  openModal('detailModal');
-}
+                                <div className="flex-1 bg-white rounded-[3.5rem] shadow-xl p-8 md:p-12 border-4 border-white relative min-h-[600px]">
 
-// ====================================================
-// 강의 삭제
-// ====================================================
-function openDeleteModal(id) {
-  const c = courses.find(x => x.id === id);
-  if (!c) return;
-  activeDeleteId = id;
-  document.getElementById('deleteModalTitle').textContent = '강의 삭제 — ' + c.name;
-  document.getElementById('d-pass').value = '';
-  document.getElementById('deleteMsg').innerHTML = '';
-  document.getElementById('deletePassSection').style.display = '';
-  document.getElementById('deleteConfirmSection').style.display = 'none';
-  document.getElementById('deleteFooter').style.display = '';
-  document.getElementById('deleteVerifyBtn').style.display = '';
-  openModal('deleteModal');
-  setTimeout(() => document.getElementById('d-pass').focus(), 100);
-}
+                                    {/* 1차시 */}
+                                    {currentSession === 1 && (
+                                        <div className="space-y-8 animate-fade">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h2 className="text-3xl font-black text-green-900 mb-2">1차시: 주제 설정</h2>
+                                                    <button onClick={() => setShowExamples(!showExamples)} className="text-xs font-bold text-green-600 bg-green-50 px-4 py-2 rounded-full flex items-center gap-2 mt-2">
+                                                        <Icon name="book-open" className="w-3 h-3" /> 교과융합 예시 주제 보기
+                                                    </button>
+                                                </div>
+                                            </div>
 
-function verifyDelete() {
-  const c = courses.find(x => x.id === activeDeleteId);
-  if (!c) return;
-  const pass = document.getElementById('d-pass').value;
-  if (hashPass(pass) !== c.pass_hash) {
-    return showMsg('deleteMsg', '비밀번호가 올바르지 않습니다.', 'error');
-  }
-  document.getElementById('deletePassSection').style.display = 'none';
-  document.getElementById('deleteFooter').style.display = 'none';
-  document.getElementById('deleteConfirmSection').style.display = '';
-}
+                                            {showExamples && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-3xl border border-gray-100 max-h-60 overflow-y-auto custom-scroll">
+                                                    {exampleThemes.map((ex, i) => (
+                                                        <div key={i} className="p-3 bg-white rounded-2xl text-[11px] shadow-sm">
+                                                            <b className="text-green-700">[{ex.field}]</b> {ex.title}
+                                                            <p className="text-gray-400 mt-1">{ex.desc}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
 
-async function confirmDelete() {
-  loading(true);
-  try {
-    await apiDeleteCourse(activeDeleteId);
-    courses = courses.filter(x => x.id !== activeDeleteId);
-    activeDeleteId = null;
-    closeModal('deleteModal');
-    renderCourses();
-  } catch(e) {
-    alert('삭제 중 오류가 발생했습니다: ' + e.message);
-  }
-  loading(false);
-}
+                                            <div className="grid md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">진로분야</label>
+                                                    <select value={formData.session1.field} onChange={e => handleInputChange('session1', 'field', e.target.value)} disabled={isExpired(1)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none">
+                                                        <option value="">분야 선택</option>
+                                                        {['예체능','의료/보건','사회','자연','교육','인문','공학','기타'].map(f => <option key={f}>{f}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">지속가능발전목표 (SDGs)</label>
+                                                    <select value={formData.session1.sdg} onChange={e => handleInputChange('session1', 'sdg', e.target.value)} disabled={isExpired(1)} className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none">
+                                                        <option value="">17가지 목표 중 선택</option>
+                                                        {sdgGoals.map(g => <option key={g} value={g}>{g}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
 
-// ====================================================
-// 카운트다운 타이머
-// ====================================================
-setInterval(() => {
-  const now = Date.now();
-  courses.forEach(c => {
-    const openDt = parseDt(c.open_date, c.open_time);
-    if (!openDt) return;
-    const isOpen = now >= openDt;
-    const cdEl = document.getElementById(`cd-${c.id}`);
-    if (cdEl && !isOpen) {
-      const until = getUntil(openDt);
-      cdEl.textContent = until || '';
-    }
-    const card = document.getElementById(`card-${c.id}`);
-    if (!card) return;
-    const isFull = c.registrants.length >= c.max_limit;
-    const badge = card.querySelector('.badge');
-    const applyBtn = card.querySelector('.btn-apply');
-    if (!badge || !applyBtn) return;
-    if (isFull) {
-      if (!badge.classList.contains('badge-full')) {
-        badge.className = 'badge badge-full';
-        badge.innerHTML = '<span class="badge-dot"></span>마감';
-        applyBtn.disabled = true; applyBtn.classList.add('disabled'); applyBtn.textContent = '신청 마감';
-        applyBtn.onclick = null;
-      }
-    } else if (isOpen) {
-      if (!badge.classList.contains('badge-open')) {
-        badge.className = 'badge badge-open';
-        badge.innerHTML = '<span class="badge-dot"></span>신청 가능';
-        applyBtn.disabled = false; applyBtn.classList.remove('disabled'); applyBtn.textContent = '수강신청';
-        applyBtn.onclick = () => openApplyModal(c.id);
-      }
-    }
-  });
-}, 1000);
+                                            <div className="space-y-4">
+                                                <input placeholder="활동 제목" value={formData.session1.title} onChange={e => handleInputChange('session1', 'title', e.target.value)} disabled={isExpired(1)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] font-bold outline-none focus:border-green-400" />
+                                                <textarea placeholder="활동 개요 (간략하게)" value={formData.session1.summary} onChange={e => handleInputChange('session1', 'summary', e.target.value)} disabled={isExpired(1)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-24 outline-none focus:border-green-400" />
+                                                <input placeholder="지역 연계 요소 (안성시청, 안성 로컬푸드 매장 등)" value={formData.session1.regionalLink} onChange={e => handleInputChange('session1', 'regionalLink', e.target.value)} disabled={isExpired(1)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] outline-none focus:border-green-400" />
+                                            </div>
 
-// ====================================================
-// 초기 로드
-// ====================================================
-loadCourses();
-</script>
+                                            <div className="bg-green-50 p-8 rounded-[2.5rem] border-2 border-green-100 space-y-4">
+                                                <h3 className="font-black text-green-800 text-sm">융합 교과 구성 (2과목 이상)</h3>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <input placeholder="과목 1" value={formData.session1.subjects[0]} onChange={e => handleInputChange('session1', 'subjects', e.target.value, 0)} className="p-4 bg-white rounded-2xl outline-none" />
+                                                    <input placeholder="과목 2" value={formData.session1.subjects[1]} onChange={e => handleInputChange('session1', 'subjects', e.target.value, 1)} className="p-4 bg-white rounded-2xl outline-none" />
+                                                </div>
+                                                <textarea placeholder="교과 융합 이유 (배운 내용과 연결하여)" value={formData.session1.reason} onChange={e => handleInputChange('session1', 'reason', e.target.value)} className="w-full p-4 bg-white rounded-2xl h-24 outline-none" />
+                                            </div>
+
+                                            <textarea placeholder="안성의 사회 문제 찾기 (현황 및 탐구 동기)" value={formData.session1.problem} onChange={e => handleInputChange('session1', 'problem', e.target.value)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-24 outline-none focus:border-green-400" />
+
+                                            <div className="mt-8 pt-6 border-t border-green-100 flex flex-col md:flex-row gap-4 items-end bg-green-50/50 p-6 rounded-[2rem]">
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 학번</label>
+                                                    <input placeholder="3101" maxLength={4} value={formData.session1.writerId} onChange={e => handleInputChange('session1', 'writerId', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 이름</label>
+                                                    <input placeholder="이름" value={formData.session1.writerName} onChange={e => handleInputChange('session1', 'writerName', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 2차시 */}
+                                    {currentSession === 2 && (
+                                        <div className="space-y-8 animate-fade">
+                                            <h2 className="text-3xl font-black text-green-900">2차시: 사례 및 정책 분석</h2>
+                                            <div className="space-y-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">실제 안성의 문제 사례 / 성공 분야</label>
+                                                    <textarea value={formData.session2.cases} onChange={e => handleInputChange('session2', 'cases', e.target.value)} disabled={isExpired(2)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-32 outline-none focus:border-green-400" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">해결을 위해 시행되는 정책 조사 및 한계점 분석</label>
+                                                    <textarea value={formData.session2.policies} onChange={e => handleInputChange('session2', 'policies', e.target.value)} disabled={isExpired(2)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-32 outline-none focus:border-green-400" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">관련 자료 출처 링크 (2개 이상)</label>
+                                                    <input placeholder="링크 1" value={formData.session2.links[0]} onChange={e => handleInputChange('session2', 'links', e.target.value, 0)} className="w-full p-4 border rounded-2xl mb-2" />
+                                                    <input placeholder="링크 2" value={formData.session2.links[1]} onChange={e => handleInputChange('session2', 'links', e.target.value, 1)} className="w-full p-4 border rounded-2xl" />
+                                                </div>
+                                            </div>
+                                            <div className="mt-8 pt-6 border-t border-green-100 flex flex-col md:flex-row gap-4 items-end bg-green-50/50 p-6 rounded-[2rem]">
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 학번</label>
+                                                    <input placeholder="3101" maxLength={4} value={formData.session2.writerId} onChange={e => handleInputChange('session2', 'writerId', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 이름</label>
+                                                    <input placeholder="이름" value={formData.session2.writerName} onChange={e => handleInputChange('session2', 'writerName', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 3-4차시 */}
+                                    {currentSession === 3 && (
+                                        <div className="space-y-8 animate-fade">
+                                            <h2 className="text-3xl font-black text-green-900">3-4차시: 해결방안</h2>
+                                            <div className="space-y-4">
+                                                <textarea placeholder="구체적인 해결방안을 서술하세요." value={formData.session3_4.solution} onChange={e => handleInputChange('session3_4', 'solution', e.target.value)} disabled={isExpired(3)} className="w-full p-6 border-2 border-gray-50 rounded-[2rem] h-64 outline-none focus:border-green-400 text-lg leading-relaxed" />
+                                                <div className="space-y-2">
+                                                    <label className="text-xs font-black text-gray-400 ml-2">참고 자료 출처 링크</label>
+                                                    <input placeholder="링크 1" value={formData.session3_4.links[0]} onChange={e => handleInputChange('session3_4', 'links', e.target.value, 0)} className="w-full p-4 border rounded-2xl mb-2" />
+                                                    <input placeholder="링크 2" value={formData.session3_4.links[1]} onChange={e => handleInputChange('session3_4', 'links', e.target.value, 1)} className="w-full p-4 border rounded-2xl" />
+                                                </div>
+                                            </div>
+                                            <div className="mt-8 pt-6 border-t border-green-100 flex flex-col md:flex-row gap-4 items-end bg-green-50/50 p-6 rounded-[2rem]">
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 학번</label>
+                                                    <input placeholder="3101" maxLength={4} value={formData.session3_4.writerId} onChange={e => handleInputChange('session3_4', 'writerId', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 이름</label>
+                                                    <input placeholder="이름" value={formData.session3_4.writerName} onChange={e => handleInputChange('session3_4', 'writerName', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 5-6차시 */}
+                                    {currentSession === 5 && (
+                                        <div className="space-y-8 animate-fade">
+                                            <h2 className="text-3xl font-black text-green-900">5-6차시: 결과물 제작 계획</h2>
+                                            <div className="space-y-6">
+                                                <input placeholder="결과물 종류 (포스터, 릴스, UCC 등)" value={formData.session5_6.plan} onChange={e => handleInputChange('session5_6', 'plan', e.target.value)} disabled={isExpired(5)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] font-bold outline-none focus:border-green-400" />
+                                                <input placeholder="제작 도구 (캔바, 캡컷 등)" value={formData.session5_6.tool} onChange={e => handleInputChange('session5_6', 'tool', e.target.value)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] outline-none" />
+                                                <textarea placeholder="상세 설명" value={formData.session5_6.description} onChange={e => handleInputChange('session5_6', 'description', e.target.value)} className="w-full p-5 border-2 border-gray-50 rounded-[1.5rem] h-24 outline-none" />
+                                                <div className="p-8 bg-yellow-50 rounded-[2.5rem] border-2 border-yellow-100 space-y-3">
+                                                    <h3 className="font-black text-yellow-800 text-sm">👥 역할 분담</h3>
+                                                    {formData.session5_6.roles.map((r, i) => (
+                                                        <div key={i} className="flex gap-2">
+                                                            <input placeholder="이름" value={r.name} onChange={e => {
+                                                                const n = [...formData.session5_6.roles]; n[i].name = e.target.value;
+                                                                handleInputChange('session5_6', 'roles', n);
+                                                            }} className="w-1/3 p-3 bg-white border-none rounded-xl text-sm" />
+                                                            <input placeholder="역할" value={r.role} onChange={e => {
+                                                                const n = [...formData.session5_6.roles]; n[i].role = e.target.value;
+                                                                handleInputChange('session5_6', 'roles', n);
+                                                            }} className="flex-1 p-3 bg-white border-none rounded-xl text-sm" />
+                                                        </div>
+                                                    ))}
+                                                    <button onClick={() => handleInputChange('session5_6', 'roles', [...formData.session5_6.roles, {name:'', role:''}])} className="text-[10px] bg-yellow-400 text-white px-3 py-1 rounded-full">+ 추가</button>
+                                                </div>
+                                            </div>
+                                            <div className="mt-8 pt-6 border-t border-green-100 flex flex-col md:flex-row gap-4 items-end bg-green-50/50 p-6 rounded-[2rem]">
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 학번</label>
+                                                    <input placeholder="3101" maxLength={4} value={formData.session5_6.writerId} onChange={e => handleInputChange('session5_6', 'writerId', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                                <div className="flex-1 w-full space-y-1">
+                                                    <label className="text-[10px] font-black text-green-700 uppercase ml-1">기록자 이름</label>
+                                                    <input placeholder="이름" value={formData.session5_6.writerName} onChange={e => handleInputChange('session5_6', 'writerName', e.target.value)} className="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 최종 제출 */}
+                                    {currentSession === 99 && (
+                                        <div className="flex flex-col items-center justify-center py-20 animate-fade text-center space-y-10">
+                                            {submitDone ? (
+                                                <>
+                                                    <div className="w-24 h-24 bg-green-600 text-white rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+                                                        <Icon name="check" className="w-12 h-12" />
+                                                    </div>
+                                                    <h2 className="text-4xl font-black text-green-900">제출 완료!</h2>
+                                                    <p className="text-gray-500 font-bold">데이터베이스에 저장되었습니다 🎉</p>
+                                                    <button onClick={downloadHTML} className="w-full max-w-sm p-5 bg-white border-2 border-green-200 text-green-700 rounded-[2rem] font-black text-lg shadow hover:bg-green-50 transition-all flex items-center justify-center gap-3">
+                                                        <Icon name="file-code" className="w-5 h-5" /> HTML 파일로도 저장하기
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="w-24 h-24 bg-green-100 text-green-600 rounded-[2.5rem] flex items-center justify-center shadow-xl">
+                                                        <Icon name="send" className="w-12 h-12" />
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <h2 className="text-4xl font-black text-green-900">제출 준비 완료!</h2>
+                                                        <p className="text-gray-500 font-bold">모든 내용을 확인한 후 제출해 주세요</p>
+                                                    </div>
+                                                    {/* 요약 미리보기 */}
+                                                    <div className="w-full max-w-md text-left bg-gray-50 rounded-[2rem] p-6 space-y-2 text-sm">
+                                                        <p><span className="font-black text-gray-400">반/모둠</span> <span className="font-bold text-gray-700 ml-2">{basicInfo.classNum}반 {groupType === 'multi' ? `${basicInfo.groupNum}모둠` : '개인'}</span></p>
+                                                        <p><span className="font-black text-gray-400">참여자</span> <span className="font-bold text-gray-700 ml-2">{basicInfo.members.map(m => m.name).join(', ')}</span></p>
+                                                        <p><span className="font-black text-gray-400">활동제목</span> <span className="font-bold text-gray-700 ml-2">{formData.session1.title || '(미입력)'}</span></p>
+                                                        <p><span className="font-black text-gray-400">SDG 목표</span> <span className="font-bold text-gray-700 ml-2">{formData.session1.sdg || '(미선택)'}</span></p>
+                                                    </div>
+                                                    <div className="flex flex-col gap-4 w-full max-w-sm">
+                                                        <button onClick={handleSubmit} disabled={isSubmitting} className="w-full p-6 bg-green-600 text-white rounded-[2rem] font-black text-xl shadow-xl hover:bg-green-700 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50">
+                                                            {isSubmitting
+                                                                ? <><svg className="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> 제출 중...</>
+                                                                : <><Icon name="send" className="w-6 h-6" /> DB에 제출하기</>
+                                                            }
+                                                        </button>
+                                                        <button onClick={downloadHTML} className="w-full p-4 bg-white border-2 border-gray-100 text-gray-500 rounded-[2rem] font-bold text-sm hover:border-green-300 transition-all flex items-center justify-center gap-2">
+                                                            <Icon name="file-code" className="w-4 h-4" /> HTML 파일로만 저장
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* 이전/다음 버튼 */}
+                                    {currentSession !== 99 && (
+                                        <div className="mt-12 pt-8 border-t border-gray-100 flex justify-between items-center">
+                                            <button onClick={() => setCurrentSession(p => p === 5 ? 3 : p === 3 ? 2 : p - 1)} disabled={currentSession === 1} className="flex items-center gap-2 font-black text-gray-300 hover:text-green-600 disabled:opacity-0 transition-colors">
+                                                <Icon name="chevron-left" /> 이전
+                                            </button>
+                                            <button onClick={() => setCurrentSession(p => p === 1 ? 2 : p === 2 ? 3 : p === 3 ? 5 : 99)} className="px-12 py-5 bg-green-600 text-white rounded-[2rem] font-black text-lg shadow-lg hover:bg-green-700 transition-all flex items-center gap-2">
+                                                다음 단계 <Icon name="chevron-right" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
