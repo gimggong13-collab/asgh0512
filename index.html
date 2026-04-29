@@ -84,19 +84,18 @@
         // 관리자 패널 컴포넌트
         // =============================================
         const AdminPanel = ({ onLogout }) => {
-            const { useState: useS, useEffect: useE } = React;
-            const [submissions, setSubmissions] = useS([]);
-            const [loading, setLoading] = useS(true);
-            const [filterClass, setFilterClass] = useS('전체');
-            const [sortBy, setSortBy] = useS('submitted_at');
-            const [downloading, setDownloading] = useS(false);
-            const [searchQuery, setSearchQuery] = useS('');
-            const [selectedIds, setSelectedIds] = useS([]);
-            const [deleteConfirm, setDeleteConfirm] = useS(null); // null | 'one' | 'selected' | 'all'
-            const [deleteTarget, setDeleteTarget] = useS(null); // single submission object
-            const [deleting, setDeleting] = useS(false);
+            const [submissions, setSubmissions] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [filterClass, setFilterClass] = useState('전체');
+            const [sortBy, setSortBy] = useState('submitted_at');
+            const [downloading, setDownloading] = useState(false);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [selectedIds, setSelectedIds] = useState([]);
+            const [deleteConfirm, setDeleteConfirm] = useState(null); // null | 'one' | 'selected' | 'all'
+            const [deleteTarget, setDeleteTarget] = useState(null); // single submission object
+            const [deleting, setDeleting] = useState(false);
 
-            useE(() => { fetchAll(); }, []);
+            useEffect(() => { fetchAll(); }, []);
 
             const fetchAll = async () => {
                 setLoading(true);
