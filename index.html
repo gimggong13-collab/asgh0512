@@ -266,9 +266,11 @@ h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px
                     else {
                         setSubmissions(prev => prev.filter(item => item.id !== s.id));
                         setSelectedIds(ids => ids.filter(id => id !== s.id));
+                        setDeleteConfirm(null);
+                        setDeleteTarget(null);
                     }
                 } catch(e) { alert('삭제 중 오류가 발생했습니다.'); }
-                finally { setDeleting(false); setDeleteConfirm(null); setDeleteTarget(null); }
+                finally { setDeleting(false); }
             };
 
             // 선택 삭제
@@ -281,9 +283,10 @@ h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px
                     else {
                         setSubmissions(prev => prev.filter(item => !selectedIds.includes(item.id)));
                         setSelectedIds([]);
+                        setDeleteConfirm(null);
                     }
                 } catch(e) { alert('삭제 중 오류가 발생했습니다.'); }
-                finally { setDeleting(false); setDeleteConfirm(null); }
+                finally { setDeleting(false); }
             };
 
             // 전체(필터된) 삭제
@@ -297,9 +300,10 @@ h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px
                     else {
                         setSubmissions(prev => prev.filter(item => !ids.includes(item.id)));
                         setSelectedIds([]);
+                        setDeleteConfirm(null);
                     }
                 } catch(e) { alert('삭제 중 오류가 발생했습니다.'); }
-                finally { setDeleting(false); setDeleteConfirm(null); }
+                finally { setDeleting(false); }
             };
 
             const toggleSelect = (id) => setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
@@ -708,13 +712,13 @@ h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px
 
                 try {
                     const { error } = await supabase.from('submissions').insert([payload]);
-                    setIsSubmitting(false);
 
                     if (error) {
                         console.error('Supabase 오류:', error);
+                        setIsSubmitting(false);
                         showToast('제출 실패: ' + (error.message || JSON.stringify(error)), 'error');
                     } else {
-                        hideToast();
+                        setIsSubmitting(false);
                         setSubmitDone(true);
                         showToast('제출 완료! 수고하셨습니다 🎉', 'success');
                     }
