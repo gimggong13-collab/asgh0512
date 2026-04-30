@@ -55,22 +55,20 @@ const ADMIN_PASSWORD = 'ansung2026';
 // =============================================
 // 아이콘 컴포넌트 (lucide SVG 직접 렌더링)
 // =============================================
+const toPascalCase = (str) =>
+  str.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('');
+
 const Icon = ({ name, className = "w-5 h-5" }) => {
-  const [svgContent, setSvgContent] = React.useState('');
-  useEffect(() => {
+  const children = React.useMemo(() => {
     try {
-      const iconName = name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-      const iconFn = lucide[iconName.charAt(0).toUpperCase() + iconName.slice(1)];
-      if (iconFn) {
-        const [tag, attrs, children] = iconFn;
-        const childSvg = (children || []).map(([t, a]) => {
-          const attrStr = Object.entries(a).map(([k, v]) => `${k}="${v}"`).join(' ');
-          return `<${t} ${attrStr}/>`;
-        }).join('');
-        setSvgContent(childSvg);
-      }
-    } catch(e) {}
+      const iconData = lucide[toPascalCase(name)];
+      if (!iconData) return [];
+      return iconData.map(([tag, attrs], i) =>
+        React.createElement(tag, { key: i, ...attrs })
+      );
+    } catch(e) { return []; }
   }, [name]);
+
   return React.createElement('svg', {
     className,
     xmlns: 'http://www.w3.org/2000/svg',
@@ -81,8 +79,7 @@ const Icon = ({ name, className = "w-5 h-5" }) => {
     strokeWidth: 2,
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
-    dangerouslySetInnerHTML: { __html: svgContent }
-  });
+  }, ...children);
 };
 
 // =============================================
