@@ -39,9 +39,9 @@ const {
 // Supabase 대시보드 → Project Settings → API 에서 확인 가능
 const SUPABASE_URL = 'https://hnhcgnrbpijnkaeomxsy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuaGNnbnJicGlqbmthZW9teHN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjcxMjYsImV4cCI6MjA5MjU0MzEyNn0.6NUUVudRw7osey9rxVHcrMCPId1aIK4XTd6vQ4rUpZ4';
-let supabase;
+let supabaseClient;
 try {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } catch (e) {
   console.error('Supabase 초기화 오류:', e);
 }
@@ -132,7 +132,7 @@ const AdminPanel = ({
   const fetchAll = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      if (!supabase) {
+      if (!supabaseClient) {
         console.error('Supabase가 초기화되지 않았습니다.');
         if (!silent) setLoading(false);
         return;
@@ -140,7 +140,7 @@ const AdminPanel = ({
       const {
         data,
         error
-      } = await supabase.from('submissions').select('*').order('submitted_at', {
+      } = await supabaseClient.from('submissions').select('*').order('submitted_at', {
         ascending: false
       });
       if (error) {
@@ -292,7 +292,7 @@ h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px
     try {
       const {
         error
-      } = await supabase.from('submissions').delete().eq('id', s.id);
+      } = await supabaseClient.from('submissions').delete().eq('id', s.id);
       if (error) {
         alert('삭제 오류: ' + error.message);
         setDeleting(false);
@@ -316,7 +316,7 @@ h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px
     try {
       const {
         error
-      } = await supabase.from('submissions').delete().in('id', selectedIds);
+      } = await supabaseClient.from('submissions').delete().in('id', selectedIds);
       if (error) {
         alert('삭제 오류: ' + error.message);
         setDeleting(false);
@@ -340,7 +340,7 @@ h2{background:#f0fdf4;padding:10px;border-left:5px solid #059669;margin-top:30px
     try {
       const {
         error
-      } = await supabase.from('submissions').delete().in('id', ids);
+      } = await supabaseClient.from('submissions').delete().in('id', ids);
       if (error) {
         alert('삭제 오류: ' + error.message);
         setDeleting(false);
@@ -823,7 +823,7 @@ const App = () => {
   // Supabase 제출 함수
   // =============================================
   const handleSubmit = async () => {
-    if (!supabase) {
+    if (!supabaseClient) {
       showToast('DB 연결 오류: Supabase가 초기화되지 않았습니다. URL/KEY를 확인해주세요.', 'error');
       return;
     }
@@ -869,7 +869,7 @@ const App = () => {
     try {
       const {
         error
-      } = await supabase.from('submissions').insert([payload]);
+      } = await supabaseClient.from('submissions').insert([payload]);
       if (error) {
         console.error('Supabase 오류:', error);
         setIsSubmitting(false);
