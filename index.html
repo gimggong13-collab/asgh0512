@@ -771,6 +771,91 @@ const App = () => {
       studentId: ''
     }]
   });
+
+  // =============================================
+  // 이전 이력 복원 관련 state
+  // =============================================
+  // restoreModal: null | { results: [...submissions], memberIdx: number }
+  const [restoreModal, setRestoreModal] = useState(null);
+  const [searchingHistory, setSearchingHistory] = useState(false);
+
+  // 이름 입력 완료 시 Supabase에서 동명이인 포함 전체 검색
+  const searchPreviousSubmission = async (name, memberIdx) => {
+    const trimmed = name.trim();
+    if (!trimmed || !supabaseClient) return;
+    setSearchingHistory(true);
+    try {
+      const { data, error } = await supabaseClient
+        .from('submissions')
+        .select('*')
+        .order('submitted_at', { ascending: false })
+        .limit(200);
+      if (!error && data) {
+        // members 배열에서 해당 이름이 포함된 제출 모두 수집
+        const found = data.filter(s =>
+          (s.members || []).some(m => m.name && m.name.trim() === trimmed)
+        );
+        if (found.length > 0) {
+          setRestoreModal({ results: found, memberIdx });
+        }
+      }
+    } catch (e) {
+      console.error('이력 검색 오류:', e);
+    } finally {
+      setSearchingHistory(false);
+    }
+  };
+
+  // 선택한 제출 데이터를 폼에 복원
+  const restoreFromSubmission = (submission) => {
+    const s = submission;
+    setBasicInfo({
+      classNum: s.class_num || '1',
+      groupNum: s.group_num || '1',
+      members: (s.members && s.members.length > 0)
+        ? s.members.map((m, idx) => ({ id: idx + 1, name: m.name || '', studentId: m.studentId || '' }))
+        : [{ id: 1, name: '', studentId: '' }]
+    });
+    if (s.group_type) setGroupType(s.group_type);
+    setFormData({
+      session1: {
+        field: s.s1_field || '',
+        sdg: s.s1_sdg || '',
+        title: s.s1_title || '',
+        summary: s.s1_summary || '',
+        regionalLink: s.s1_regional_link || '',
+        subjects: s.s1_subjects && s.s1_subjects.length >= 2 ? s.s1_subjects : ['', ''],
+        reason: s.s1_reason || '',
+        problem: s.s1_problem || '',
+        writerId: s.s1_writer_id || '',
+        writerName: s.s1_writer_name || ''
+      },
+      session2: {
+        cases: s.s2_cases || '',
+        policies: s.s2_policies || '',
+        links: s.s2_links && s.s2_links.length >= 2 ? s.s2_links : ['', ''],
+        writerId: s.s2_writer_id || '',
+        writerName: s.s2_writer_name || ''
+      },
+      session3_4: {
+        solution: s.s3_solution || '',
+        links: s.s3_links && s.s3_links.length >= 2 ? s.s3_links : ['', ''],
+        writerId: s.s3_writer_id || '',
+        writerName: s.s3_writer_name || ''
+      },
+      session5_6: {
+        plan: s.s5_plan || '',
+        tool: s.s5_tool || '',
+        description: s.s5_description || '',
+        roles: s.s5_roles && s.s5_roles.length > 0 ? s.s5_roles : [{ name: '', role: '' }],
+        writerId: s.s5_writer_id || '',
+        writerName: s.s5_writer_name || ''
+      }
+    });
+    setRestoreModal(null);
+    showToast('이전 내용을 불러왔습니다 ✨', 'success');
+  };
+
   const [formData, setFormData] = useState({
     session1: {
       field: '',
@@ -977,9 +1062,72 @@ const App = () => {
   if (adminMode === 'panel') return /*#__PURE__*/React.createElement(AdminPanel, {
     onLogout: () => setAdminMode('off')
   });
+  // 이전 이력 복원 모달 (이름 기반 다중 결과)
+  const searchedName = restoreModal ? (basicInfo.members[restoreModal.memberIdx]?.name || '') : '';
+  const RestoreModal = restoreModal && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-center justify-center p-4",
+    style: { backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-white rounded-[2.5rem] shadow-2xl p-7 max-w-lg w-full animate-fade flex flex-col",
+    style: { maxHeight: '85vh' }
+  },
+    /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-3 mb-1"
+    },
+      /*#__PURE__*/React.createElement("div", {
+        className: "w-11 h-11 bg-amber-100 rounded-2xl flex items-center justify-center flex-shrink-0"
+      }, /*#__PURE__*/React.createElement(Icon, { name: "history", className: "w-5 h-5 text-amber-600" })),
+      /*#__PURE__*/React.createElement("div", null,
+        /*#__PURE__*/React.createElement("h3", { className: "text-lg font-black text-gray-900" }, "이전 작성 이력이 있어요!"),
+        /*#__PURE__*/React.createElement("p", { className: "text-xs text-gray-400 font-bold mt-0.5" },
+          "'" + searchedName + "' 이름으로 " + restoreModal.results.length + "건의 이력이 발견되었습니다. 불러올 내용을 선택하세요."
+        )
+      )
+    ),
+    /*#__PURE__*/React.createElement("div", { className: "mt-4 overflow-y-auto flex-1 flex flex-col gap-3 pr-1" },
+      restoreModal.results.map((s, idx) =>
+        /*#__PURE__*/React.createElement("button", {
+          key: idx,
+          onClick: () => restoreFromSubmission(s),
+          className: "w-full text-left bg-gray-50 hover:bg-green-50 border border-gray-200 hover:border-green-400 rounded-2xl p-4 transition-all group"
+        },
+          /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-between mb-2" },
+            /*#__PURE__*/React.createElement("span", { className: "text-sm font-black text-gray-800 group-hover:text-green-700" },
+              s.s1_title ? s.s1_title : "(활동 제목 미입력)"
+            ),
+            /*#__PURE__*/React.createElement("span", { className: "text-xs font-bold text-white bg-green-500 group-hover:bg-green-600 rounded-lg px-2.5 py-1 ml-2 flex-shrink-0" },
+              "불러오기"
+            )
+          ),
+          /*#__PURE__*/React.createElement("div", { className: "flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-bold" },
+            /*#__PURE__*/React.createElement("span", null,
+              "반: ", s.class_num || "?", "반"
+            ),
+            s.group_type === 'multi' && /*#__PURE__*/React.createElement("span", null,
+              "모둥: ", s.group_num || "?", "모둥"
+            ),
+            /*#__PURE__*/React.createElement("span", null,
+              "참여자: ", (s.members || []).map(m2 => m2.name).join(', ') || "?"
+            ),
+            /*#__PURE__*/React.createElement("span", null,
+              "학번: ", (s.members || []).map(m2 => m2.studentId).join(', ') || "?"
+            )
+          ),
+          /*#__PURE__*/React.createElement("div", { className: "mt-1.5 text-xs text-gray-400 font-bold" },
+            "제출일시: ", s.submitted_at ? new Date(s.submitted_at).toLocaleString('ko-KR') : '?'
+          )
+        )
+      )
+    ),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => setRestoreModal(null),
+      className: "mt-4 w-full p-4 bg-gray-100 text-gray-500 rounded-2xl font-bold text-sm hover:bg-gray-200 transition-all"
+    }, "무시하고 새로 작성하기")
+  ));
+
   return /*#__PURE__*/React.createElement("div", {
     className: "min-h-screen pb-20"
-  }, toast && /*#__PURE__*/React.createElement(Toast, {
+  }, RestoreModal, toast && /*#__PURE__*/React.createElement(Toast, {
     key: toast.message + toast.type,
     message: toast.message,
     type: toast.type,
@@ -1105,7 +1253,7 @@ const App = () => {
     className: "text-xs font-black text-gray-400 ml-2"
   }, groupType === 'multi' ? '명단 입력' : '학생 정보 입력'), basicInfo.members.map((m, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
-    className: "flex gap-3 animate-fade"
+    className: "flex gap-3 animate-fade relative"
   }, /*#__PURE__*/React.createElement("input", {
     placeholder: "\uD559\uBC88(4\uC790\uB9AC)",
     value: m.studentId,
@@ -1119,19 +1267,29 @@ const App = () => {
     },
     className: "w-1/3 p-4 border rounded-2xl outline-none focus:border-green-400",
     maxLength: 4
-  }), /*#__PURE__*/React.createElement("input", {
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 relative"
+  }, /*#__PURE__*/React.createElement("input", {
     placeholder: "\uC774\uB984",
     value: m.name,
     onChange: e => {
       const n = [...basicInfo.members];
       n[i].name = e.target.value;
-      setBasicInfo({
-        ...basicInfo,
-        members: n
-      });
+      setBasicInfo({ ...basicInfo, members: n });
     },
-    className: "flex-1 p-4 border rounded-2xl outline-none focus:border-green-400"
-  }))), groupType === 'multi' && basicInfo.members.length < 5 && /*#__PURE__*/React.createElement("button", {
+    onBlur: e => {
+      if (e.target.value.trim().length >= 2) searchPreviousSubmission(e.target.value, i);
+    },
+    className: "w-full p-4 border rounded-2xl outline-none focus:border-green-400"
+  }), searchingHistory && /*#__PURE__*/React.createElement("div", {
+    className: "absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 bg-green-50 rounded-lg border border-green-200 text-green-600 text-xs font-bold pointer-events-none"
+  }, /*#__PURE__*/React.createElement("svg", {
+    className: "animate-spin w-3 h-3", fill: "none", viewBox: "0 0 24 24"
+  }, /*#__PURE__*/React.createElement("circle", {
+    className: "opacity-25", cx: "12", cy: "12", r: "10", stroke: "currentColor", strokeWidth: "4"
+  }), /*#__PURE__*/React.createElement("path", {
+    className: "opacity-75", fill: "currentColor", d: "M4 12a8 8 0 018-8v8z"
+  })), "\uAC80\uC0C9\uC911"))), groupType === 'multi' && basicInfo.members.length < 5 && /*#__PURE__*/React.createElement("button", {
     onClick: () => setBasicInfo({
       ...basicInfo,
       members: [...basicInfo.members, {
